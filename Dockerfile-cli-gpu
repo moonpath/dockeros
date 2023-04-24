@@ -1,0 +1,55 @@
+ARG BASE_IMAGE="nvidia/cuda:11.7.0-cudnn8-devel-ubuntu22.04"
+FROM $BASE_IMAGE as easy_programming
+
+ARG USER=ubuntu  
+ARG HOME=/home/$USER
+
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN adduser $USER --disabled-password
+
+RUN apt update
+RUN apt install -y apt-utils
+
+RUN apt install -y sudo \
+&& echo "$USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+RUN apt install -y openssh-server \
+&& sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+
+RUN apt install -y curl wget git
+
+RUN wget https://github.com/fatedier/frp/releases/download/v0.48.0/frp_0.48.0_linux_amd64.tar.gz \
+&& tar -zxvf frp_0.48.0_linux_amd64.tar.gz \
+&& mv frp_0.48.0_linux_amd64 /usr/local/lib/frp \
+&& rm frp_0.48.0_linux_amd64.tar.gz \
+&& ln -s /usr/local/lib/frp/frpc /usr/local/bin/frpc \
+&& ln -s /usr/local/lib/frp/frps /usr/local/bin/frps
+
+# Install dependency components.
+RUN apt install -y \
+	    iproute2 \
+	    iputils-ping \
+	    netcat \
+	    socat \
+	    nmap \ 
+	    vim
+
+RUN apt -y autoclean \
+&& apt -y autoremove \
+&& rm -rf /var/lib/apt/lists/*
+
+RUN echo '#!/bin/bash' > /.dockerstartup \
+&& echo 'set -ex' >> /.dockerstartup \
+&& echo 'sudo service ssh start' >> /.dockerstartup \
+&& echo 'if [ -f ~/.startup ]; then' >> /.dockerstartup \
+&& echo '    . ~/.startup' >> /.dockerstartup \
+&& echo 'fi' >> /.dockerstartup \
+&& echo 'exec "$@"' >> /.dockerstartup \
+&& chmod 755 /.dockerstartup
+
+USER $USER
+WORKDIR $HOME
+
+CMD "/bin/bash"
+ENTRYPOINT ["/.dockerstartup"]
