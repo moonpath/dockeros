@@ -83,6 +83,9 @@ RUN echo '#!/bin/bash' > /.vncstartup \
 && echo 'fi' >> /.vncstartup \
 && echo 'echo -e "$VNC_PASSWD\n$VNC_PASSWD\n" | vncpasswd -u $VNC_USER -o -w -r' >> /.vncstartup \
 && echo 'vncserver -select-de XFCE -websocketPort $VNC_PORT :1' >> /.vncstartup \
+&& echo 'if [[ -z `ls -A $HOME` ]] && [[ -f /etc/skel/.bashrc ]] && [[ -f /etc/skel/.profile ]] && [[ -f /etc/skel/.bash_logout ]]; then' >> /.vncstartup \
+&& echo '    cp /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/' >> /.vncstartup \
+&& echo 'fi' >> /.vncstartup \
 && echo 'if [ -f ~/.startup ]; then' >> /.vncstartup \
 && echo '    . ~/.startup' >> /.vncstartup \
 && echo 'fi' >> /.vncstartup \

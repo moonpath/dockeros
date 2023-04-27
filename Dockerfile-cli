@@ -42,6 +42,9 @@ RUN apt -y autoclean \
 RUN echo '#!/bin/bash' > /.dockerstartup \
 && echo 'set -ex' >> /.dockerstartup \
 && echo 'sudo service ssh start' >> /.dockerstartup \
+&& echo 'if [[ -z `ls -A $HOME` ]] && [[ -f /etc/skel/.bashrc ]] && [[ -f /etc/skel/.profile ]] && [[ -f /etc/skel/.bash_logout ]]; then' >> /.dockerstartup \
+&& echo '    cp /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/' >> /.dockerstartup \
+&& echo 'fi' >> /.dockerstartup \
 && echo 'if [ -f ~/.startup ]; then' >> /.dockerstartup \
 && echo '    . ~/.startup' >> /.dockerstartup \
 && echo 'fi' >> /.dockerstartup \
