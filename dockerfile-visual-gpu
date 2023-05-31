@@ -43,9 +43,11 @@ RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /
 
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg \
 && install -o root -g root -m 644 microsoft.gpg /etc/apt/trusted.gpg.d/ \
+&& sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" > /etc/apt/sources.list.d/microsoft-vscode.list' \
 && sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/edge stable main" > /etc/apt/sources.list.d/microsoft-edge.list' \
 && rm microsoft.gpg \
 && apt update \
+&& apt install -y code \
 && apt install -y microsoft-edge-stable
 
 RUN curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash
@@ -109,6 +111,9 @@ RUN mkdir -p $HOME/.config/xfce4/xfconf/xfce-perchannel-xml \
 && echo '</channel>' >> $HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-screensaver.xml
 
 RUN mkdir -p $HOME/Desktop
+
+RUN cp /usr/share/applications/code.desktop $HOME/Desktop/code.desktop \
+&& chmod 755 $HOME/Desktop/code.desktop
 
 RUN cp /usr/share/applications/microsoft-edge.desktop $HOME/Desktop/microsoft-edge.desktop \
 && chmod 755 $HOME/Desktop/microsoft-edge.desktop
