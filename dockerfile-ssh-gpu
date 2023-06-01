@@ -26,6 +26,11 @@ RUN wget https://github.com/fatedier/frp/releases/download/v0.48.0/frp_0.48.0_li
 && ln -s /usr/local/lib/frp/frpc /usr/local/bin/frpc \
 && ln -s /usr/local/lib/frp/frps /usr/local/bin/frps
 
+RUN curl -Lk 'https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64' --output vscode_cli.tar.gz \
+&& tar -zxvf vscode_cli.tar.gz \
+&& mv code /usr/local/bin/ \
+&& rm vscode_cli.tar.gz
+
 # Install dependency components.
 RUN apt install -y \
 	    iproute2 \
