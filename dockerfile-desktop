@@ -36,10 +36,12 @@ RUN wget https://github.com/kasmtech/KasmVNC/releases/download/v1.0.1/kasmvncser
 RUN apt install -y openssh-server \
 && sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
 
-RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg \
-&& echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null \
-&& apt update \
-&& apt install -y docker-ce-cli
+RUN wget https://github.com/fatedier/frp/releases/download/v0.48.0/frp_0.48.0_linux_amd64.tar.gz \
+&& tar -zxvf frp_0.48.0_linux_amd64.tar.gz \
+&& mv frp_0.48.0_linux_amd64 /usr/local/lib/frp \
+&& rm frp_0.48.0_linux_amd64.tar.gz \
+&& ln -s /usr/local/lib/frp/frpc /usr/local/bin/frpc \
+&& ln -s /usr/local/lib/frp/frps /usr/local/bin/frps
 
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg \
 && install -o root -g root -m 644 microsoft.gpg /etc/apt/trusted.gpg.d/ \
@@ -50,7 +52,8 @@ RUN curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > mic
 && apt install -y code \
 && apt install -y microsoft-edge-stable
 
-RUN curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash
+RUN apt install -y fuse libfuse2 \
+&& curl -fsSL https://raw.githubusercontent.com/nagygergo/jetbrains-toolbox-install/master/jetbrains-toolbox.sh | bash
 
 RUN apt install -y \
 	    iproute2 \
@@ -59,14 +62,6 @@ RUN apt install -y \
 	    socat \
 	    nmap \ 
 	    vim
-
-RUN apt install -y fuse libfuse2 \
-&& curl -fsSL https://raw.githubusercontent.com/nagygergo/jetbrains-toolbox-install/master/jetbrains-toolbox.sh | bash
-#RUN wget https://download-cdn.jetbrains.com/toolbox/jetbrains-toolbox-1.27.2.13801.tar.gz \
-#&& tar -xvf jetbrains-toolbox-1.27.2.13801.tar.gz \
-#&& chmod 755 jetbrains-toolbox-1.27.2.13801/jetbrains-toolbox \
-#&& mv jetbrains-toolbox-1.27.2.13801/jetbrains-toolbox /usr/bin/ \
-#&& rm -rf jetbrains-toolbox-1.27.2.13801*
 
 RUN apt -y autoclean \
 && apt -y autoremove \
