@@ -1,14 +1,12 @@
 ARG BASE_IMAGE="ubuntu:22.04"
-FROM $BASE_IMAGE as visual_programming
+FROM $BASE_IMAGE as base_image
 
 ARG USER=admin
 ARG HOME=/home/$USER
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN adduser $USER --disabled-password
-
-RUN yes | unminimize
+RUN adduser $USER --disabled-password --gecos ''
 
 RUN apt update \
 && apt install -y apt-utils
@@ -16,13 +14,11 @@ RUN apt update \
 RUN apt install -y sudo \
 && echo "$USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
-RUN echo "Install Xfce4 UI components"
 RUN apt install -y xfce4 xfce4-terminal dbus-x11 libdbus-glib-1-2
 
 RUN apt install -y language-pack-zh* \
 	    fonts-arphic-ukai fonts-arphic-uming fonts-ipafont-mincho fonts-ipafont-gothic fonts-unfonts-core
 
-# Install dependency components.
 RUN apt install -y \
 	    curl \
 	    wget \
@@ -67,69 +63,70 @@ RUN apt -y autoclean \
 && apt -y autoremove \
 && rm -rf /var/lib/apt/lists/*
 
-RUN echo '#!/bin/bash' > /.vncstartup \
-&& echo 'set -ex' >> /.vncstartup \
-&& echo 'if [ ! $VNC_USER ]; then' >> /.vncstartup \
-&& echo '    VNC_USER=user' >> /.vncstartup \
-&& echo 'fi' >> /.vncstartup \
-&& echo 'if [ ! $VNC_PASSWD ]; then' >> /.vncstartup \
-&& echo '    VNC_PASSWD=password' >> /.vncstartup \
-&& echo 'fi' >> /.vncstartup \
-&& echo 'if [ ! $VNC_PORT ]; then' >> /.vncstartup \
-&& echo '    VNC_PORT=6901' >> /.vncstartup \
-&& echo 'fi' >> /.vncstartup \
-&& echo 'echo -e "$VNC_PASSWD\n$VNC_PASSWD\n" | vncpasswd -u $VNC_USER -o -w -r' >> /.vncstartup \
-&& echo 'vncserver -select-de XFCE -websocketPort $VNC_PORT :1' >> /.vncstartup \
-&& echo 'cp -n /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/' >> /.vncstartup \
-&& echo 'if [ -f ~/.startup ]; then' >> /.vncstartup \
-&& echo '    . ~/.startup' >> /.vncstartup \
-&& echo 'fi' >> /.vncstartup \
-&& echo 'exec "$@"' >> /.vncstartup \
-&& chmod 755 /.vncstartup
+RUN mkdir /.dockerconfig
+
+RUN echo '<?xml version="1.0" encoding="UTF-8"?>' > /.dockerconfig/xfce4-screensaver.xml \
+&& echo '' >> /.dockerconfig/xfce4-screensaver.xml \
+&& echo '<channel name="xfce4-screensaver" version="1.0">' >> /.dockerconfig/xfce4-screensaver.xml \
+&& echo '  <property name="saver" type="empty">' >> /.dockerconfig/xfce4-screensaver.xml \
+&& echo '    <property name="mode" type="int" value="0"/>' >> /.dockerconfig/xfce4-screensaver.xml \
+&& echo '    <property name="enabled" type="bool" value="false"/>' >> /.dockerconfig/xfce4-screensaver.xml \
+&& echo '  </property>' >> /.dockerconfig/xfce4-screensaver.xml \
+&& echo '  <property name="lock" type="empty">' >> /.dockerconfig/xfce4-screensaver.xml \
+&& echo '    <property name="enabled" type="bool" value="false"/>' >> /.dockerconfig/xfce4-screensaver.xml \
+&& echo '  </property>' >> /.dockerconfig/xfce4-screensaver.xml \
+&& echo '</channel>' >> /.dockerconfig/xfce4-screensaver.xml
+
+RUN echo '<svg data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="64" height="64"><defs><linearGradient id="a" x1="2.18" y1="23.255" x2="30.041" y2="8.782" gradientUnits="userSpaceOnUse"><stop offset=".043" stop-color="#ff8618"/><stop offset=".382" stop-color="#ff246e"/><stop offset=".989" stop-color="#af1df5"/></linearGradient></defs><title>ToolBox_trayIcon_colour_32-01</title><path d="M26,22.4713l-6.83,3.8311V23.2578L26,19.4268v3.0445Z" fill="#fff"/><path fill="#000001" d="M16 32.076L30 24.065 30 8.057 16 16.067 16 32.076"/><path fill="#fff" d="M18.925 24.641L18.925 27.041 25.026 23.55 25.026 21.15 18.925 24.641"/><path fill="url(#a)" d="M16 0.076L2 8.057 2 8.057 2 8.057 2 24.065 16 32.076 16 16.067 30 8.057 16 0.076"/></svg>' > /.dockerconfig/toolbox.svg
+
+RUN echo '[Desktop Entry]' > /.dockerconfig/jetbrains-toolbox.desktop \
+&& echo "Icon=$HOME/.local/share/JetBrains/Toolbox/toolbox.svg" >> /.dockerconfig/jetbrains-toolbox.desktop \
+&& echo 'Exec=/usr/local/bin/jetbrains-toolbox %u' >> /.dockerconfig/jetbrains-toolbox.desktop \
+&& echo 'Version=1.0 ' >> /.dockerconfig/jetbrains-toolbox.desktop \
+&& echo 'Type=Application' >> /.dockerconfig/jetbrains-toolbox.desktop \
+&& echo 'Categories=Development' >> /.dockerconfig/jetbrains-toolbox.desktop \
+&& echo 'Name=JetBrains Toolbox' >> /.dockerconfig/jetbrains-toolbox.desktop \
+&& echo 'StartupWMClass=jetbrains-toolbox' >> /.dockerconfig/jetbrains-toolbox.desktop \
+&& echo 'Terminal=false' >> /.dockerconfig/jetbrains-toolbox.desktop \
+&& echo 'MimeType=x-scheme-handler/jetbrains;' >> /.dockerconfig/jetbrains-toolbox.desktop \
+&& echo 'X-GNOME-Autostart-enabled=true' >> /.dockerconfig/jetbrains-toolbox.desktop \
+&& echo 'StartupNotify=false' >> /.dockerconfig/jetbrains-toolbox.desktop \
+&& echo 'X-GNOME-Autostart-Delay=10' >> /.dockerconfig/jetbrains-toolbox.desktop \
+&& echo 'X-MATE-Autostart-Delay=10' >> /.dockerconfig/jetbrains-toolbox.desktop \
+&& echo 'X-KDE-autostart-after=panel' >> /.dockerconfig/jetbrains-toolbox.desktop
+
+RUN echo '#!/bin/bash' > /.dockerstartup \
+&& echo 'set -ex' >> /.dockerstartup \
+&& echo 'if [ ! $VNC_USER ]; then' >> /.dockerstartup \
+&& echo '    VNC_USER=user' >> /.dockerstartup \
+&& echo 'fi' >> /.dockerstartup \
+&& echo 'if [ ! $VNC_PASSWD ]; then' >> /.dockerstartup \
+&& echo '    VNC_PASSWD=password' >> /.dockerstartup \
+&& echo 'fi' >> /.dockerstartup \
+&& echo 'if [ ! $VNC_PORT ]; then' >> /.dockerstartup \
+&& echo '    VNC_PORT=6901' >> /.dockerstartup \
+&& echo 'fi' >> /.dockerstartup \
+&& echo 'echo -e "$VNC_PASSWD\n$VNC_PASSWD\n" | vncpasswd -u $VNC_USER -o -w -r' >> /.dockerstartup \
+&& echo 'vncserver -select-de XFCE -websocketPort $VNC_PORT :1' >> /.dockerstartup \
+&& echo 'cp -n /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/' >> /.dockerstartup \
+&& echo 'mkdir -p $HOME/.config/xfce4/xfconf/xfce-perchannel-xml' >> /.dockerstartup \
+&& echo 'cp -n /.dockerconfig/xfce4-screensaver.xml $HOME/.config/xfce4/xfconf/xfce-perchannel-xml/' >> /.dockerstartup \
+&& echo 'mkdir -p $HOME/Desktop' >> /.dockerstartup \
+&& echo 'cp -n /usr/share/applications/code.desktop $HOME/Desktop/code.desktop' >> /.dockerstartup \
+&& echo 'chmod 755 $HOME/Desktop/code.desktop' >> /.dockerstartup \
+&& echo 'cp -n /usr/share/applications/microsoft-edge.desktop $HOME/Desktop/microsoft-edge.desktop' >> /.dockerstartup \
+&& echo 'chmod 755 $HOME/Desktop/microsoft-edge.desktop' >> /.dockerstartup \
+&& echo 'mkdir -p $HOME/.local/share/JetBrains/Toolbox' >> /.dockerstartup \
+&& echo 'cp -n /.dockerconfig/toolbox.svg $HOME/.local/share/JetBrains/Toolbox/' >> /.dockerstartup \
+&& echo 'cp -n /.dockerconfig/jetbrains-toolbox.desktop $HOME/Desktop/' >> /.dockerstartup \
+&& echo 'chmod 755 $HOME/Desktop/jetbrains-toolbox.desktop' >> /.dockerstartup \
+&& echo 'if [ -f ~/.startup ]; then' >> /.dockerstartup \
+&& echo '    . ~/.startup' >> /.dockerstartup \
+&& echo 'fi' >> /.dockerstartup \
+&& echo 'exec "$@"' >> /.dockerstartup \
+&& chmod 755 /.dockerstartup
 
 USER $USER
 WORKDIR $HOME
-
-RUN mkdir -p $HOME/.config/xfce4/xfconf/xfce-perchannel-xml \
-&& echo '<?xml version="1.0" encoding="UTF-8"?>' > $HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-screensaver.xml \
-&& echo '' >> $HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-screensaver.xml \
-&& echo '<channel name="xfce4-screensaver" version="1.0">' >> $HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-screensaver.xml \
-&& echo '  <property name="saver" type="empty">' >> $HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-screensaver.xml \
-&& echo '    <property name="mode" type="int" value="0"/>' >> $HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-screensaver.xml \
-&& echo '    <property name="enabled" type="bool" value="false"/>' >> $HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-screensaver.xml \
-&& echo '  </property>' >> $HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-screensaver.xml \
-&& echo '  <property name="lock" type="empty">' >> $HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-screensaver.xml \
-&& echo '    <property name="enabled" type="bool" value="false"/>' >> $HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-screensaver.xml \
-&& echo '  </property>' >> $HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-screensaver.xml \
-&& echo '</channel>' >> $HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-screensaver.xml
-
-RUN mkdir -p $HOME/Desktop
-
-RUN cp /usr/share/applications/code.desktop $HOME/Desktop/code.desktop \
-&& chmod 755 $HOME/Desktop/code.desktop
-
-RUN cp /usr/share/applications/microsoft-edge.desktop $HOME/Desktop/microsoft-edge.desktop \
-&& chmod 755 $HOME/Desktop/microsoft-edge.desktop
-
-RUN mkdir -p $HOME/.local/share/JetBrains/Toolbox/ \
-&& echo '<svg data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="64" height="64"><defs><linearGradient id="a" x1="2.18" y1="23.255" x2="30.041" y2="8.782" gradientUnits="userSpaceOnUse"><stop offset=".043" stop-color="#ff8618"/><stop offset=".382" stop-color="#ff246e"/><stop offset=".989" stop-color="#af1df5"/></linearGradient></defs><title>ToolBox_trayIcon_colour_32-01</title><path d="M26,22.4713l-6.83,3.8311V23.2578L26,19.4268v3.0445Z" fill="#fff"/><path fill="#000001" d="M16 32.076L30 24.065 30 8.057 16 16.067 16 32.076"/><path fill="#fff" d="M18.925 24.641L18.925 27.041 25.026 23.55 25.026 21.15 18.925 24.641"/><path fill="url(#a)" d="M16 0.076L2 8.057 2 8.057 2 8.057 2 24.065 16 32.076 16 16.067 30 8.057 16 0.076"/></svg>' > $HOME/.local/share/JetBrains/Toolbox/toolbox.svg
-
-RUN echo '[Desktop Entry]' > $HOME/Desktop/jetbrains-toolbox.desktop \
-&& echo "Icon=$HOME/.local/share/JetBrains/Toolbox/toolbox.svg" >> $HOME/Desktop/jetbrains-toolbox.desktop \
-&& echo 'Exec=/usr/local/bin/jetbrains-toolbox %u' >> $HOME/Desktop/jetbrains-toolbox.desktop \
-&& echo 'Version=1.0 ' >> $HOME/Desktop/jetbrains-toolbox.desktop \
-&& echo 'Type=Application' >> $HOME/Desktop/jetbrains-toolbox.desktop \
-&& echo 'Categories=Development' >> $HOME/Desktop/jetbrains-toolbox.desktop \
-&& echo 'Name=JetBrains Toolbox' >> $HOME/Desktop/jetbrains-toolbox.desktop \
-&& echo 'StartupWMClass=jetbrains-toolbox' >> $HOME/Desktop/jetbrains-toolbox.desktop \
-&& echo 'Terminal=false' >> $HOME/Desktop/jetbrains-toolbox.desktop \
-&& echo 'MimeType=x-scheme-handler/jetbrains;' >> $HOME/Desktop/jetbrains-toolbox.desktop \
-&& echo 'X-GNOME-Autostart-enabled=true' >> $HOME/Desktop/jetbrains-toolbox.desktop \
-&& echo 'StartupNotify=false' >> $HOME/Desktop/jetbrains-toolbox.desktop \
-&& echo 'X-GNOME-Autostart-Delay=10' >> $HOME/Desktop/jetbrains-toolbox.desktop \
-&& echo 'X-MATE-Autostart-Delay=10' >> $HOME/Desktop/jetbrains-toolbox.desktop \
-&& echo 'X-KDE-autostart-after=panel' >> $HOME/Desktop/jetbrains-toolbox.desktop \
-&& chmod 755 $HOME/Desktop/jetbrains-toolbox.desktop
-
 CMD "/bin/bash"
-ENTRYPOINT ["/.vncstartup"]
+ENTRYPOINT ["/.dockerstartup"]
