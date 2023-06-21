@@ -96,7 +96,7 @@ RUN echo '[Desktop Entry]' > /.dockerconfig/jetbrains-toolbox.desktop \
 && echo 'X-KDE-autostart-after=panel' >> /.dockerconfig/jetbrains-toolbox.desktop
 
 RUN echo '#!/bin/bash' > /.dockerstartup \
-&& echo 'set -ex' >> /.dockerstartup \
+&& echo 'set -x' >> /.dockerstartup \
 && echo 'if [ ! $VNC_USER ]; then' >> /.dockerstartup \
 && echo '    VNC_USER=user' >> /.dockerstartup \
 && echo 'fi' >> /.dockerstartup \
@@ -107,6 +107,7 @@ RUN echo '#!/bin/bash' > /.dockerstartup \
 && echo '    VNC_PORT=6901' >> /.dockerstartup \
 && echo 'fi' >> /.dockerstartup \
 && echo 'echo -e "$VNC_PASSWD\n$VNC_PASSWD\n" | vncpasswd -u $VNC_USER -o -w -r' >> /.dockerstartup \
+&& echo 'rm -rf /tmp/.X1-lock /tmp/.X11-unix' >> /.dockerstartup \
 && echo 'vncserver -select-de XFCE -websocketPort $VNC_PORT :1' >> /.dockerstartup \
 && echo 'cp -n /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/' >> /.dockerstartup \
 && echo 'mkdir -p $HOME/.config/xfce4/xfconf/xfce-perchannel-xml' >> /.dockerstartup \
@@ -123,6 +124,7 @@ RUN echo '#!/bin/bash' > /.dockerstartup \
 && echo 'if [ -f ~/.startup ]; then' >> /.dockerstartup \
 && echo '    . ~/.startup' >> /.dockerstartup \
 && echo 'fi' >> /.dockerstartup \
+&& echo 'set -ex' >> /.dockerstartup \
 && echo 'exec "$@"' >> /.dockerstartup \
 && chmod 755 /.dockerstartup
 

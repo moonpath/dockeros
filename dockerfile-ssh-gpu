@@ -45,12 +45,13 @@ RUN apt -y autoclean \
 && rm -rf /var/lib/apt/lists/*
 
 RUN echo '#!/bin/bash' > /.dockerstartup \
-&& echo 'set -ex' >> /.dockerstartup \
+&& echo 'set -x' >> /.dockerstartup \
 && echo 'sudo service ssh start' >> /.dockerstartup \
 && echo 'cp -n /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/' >> /.dockerstartup \
 && echo 'if [ -f ~/.startup ]; then' >> /.dockerstartup \
 && echo '    . ~/.startup' >> /.dockerstartup \
 && echo 'fi' >> /.dockerstartup \
+&& echo 'set -ex' >> /.dockerstartup \
 && echo 'exec "$@"' >> /.dockerstartup \
 && chmod 755 /.dockerstartup
 
