@@ -5,6 +5,7 @@ ARG USER=admin
 ARG HOME=/home/$USER
 
 ENV DEBIAN_FRONTEND noninteractive
+ENV LANG C.UTF-8
 
 RUN adduser $USER --disabled-password --gecos ''
 
@@ -46,6 +47,7 @@ RUN apt -y autoclean \
 
 RUN echo '#!/bin/bash' > /.dockerstartup \
 && echo 'set -x' >> /.dockerstartup \
+&& echo 'sudo chown `whoami`:`whoami` $HOME' >> /.dockerstartup \
 && echo 'sudo service ssh start' >> /.dockerstartup \
 && echo 'cp -n /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/' >> /.dockerstartup \
 && echo 'if [ -f ~/.startup ]; then' >> /.dockerstartup \

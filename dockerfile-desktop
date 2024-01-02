@@ -5,6 +5,7 @@ ARG USER=admin
 ARG HOME=/home/$USER
 
 ENV DEBIAN_FRONTEND noninteractive
+ENV LANG C.UTF-8
 
 RUN adduser $USER --disabled-password --gecos ''
 
@@ -17,7 +18,7 @@ RUN apt install -y sudo \
 RUN apt install -y xfce4 xfce4-terminal dbus-x11 libdbus-glib-1-2
 
 RUN apt install -y language-pack-zh* \
-	    fonts-arphic-ukai fonts-arphic-uming fonts-ipafont-mincho fonts-ipafont-gothic fonts-unfonts-core
+            fonts-droid-fallback ttf-wqy-zenhei ttf-wqy-microhei fonts-arphic-ukai fonts-arphic-uming
 
 RUN apt install -y \
 	    curl \
@@ -97,6 +98,7 @@ RUN echo '[Desktop Entry]' > /.dockerconfig/jetbrains-toolbox.desktop \
 
 RUN echo '#!/bin/bash' > /.dockerstartup \
 && echo 'set -x' >> /.dockerstartup \
+&& echo 'sudo chown `whoami`:`whoami` $HOME' >> /.dockerstartup \
 && echo 'if [ ! $VNC_USER ]; then' >> /.dockerstartup \
 && echo '    VNC_USER=user' >> /.dockerstartup \
 && echo 'fi' >> /.dockerstartup \
