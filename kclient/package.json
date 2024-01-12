@@ -1,0 +1,32 @@
+{
+  "name": "kclient",
+  "version": "0.3.7",
+  "description": "Kclient is a wrapper for KasmVNC to add functionality to a containerized environment",
+  "main": "index.js",
+  "dependencies": {
+    "ejs": "^3.1.8",
+    "express": "^4.18.2",
+    "pulseaudio2": "^0.5.5",
+    "socket.io": "^4.6.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/moonpath/docker-os.git"
+  },
+  "keywords": [
+    "VNC",
+    "Webos",
+    "VDI",
+    "Docker"
+  ],
+  "author": "Webos",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/moonpath/docker-os/issues"
+  },
+  "homepage": "https://github.com/moonpath/docker-os#readme"
+}

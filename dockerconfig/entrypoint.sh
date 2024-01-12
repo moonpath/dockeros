@@ -8,9 +8,9 @@ if [ ! $VNC_PORT ]; then
     VNC_PORT=3000
 fi
 
-sudo ln -s /etc/nginx/sites-available/webdesktop /etc/nginx/sites-enabled/webdesktop
-sudo sed -i "s/\$HTTP_PORT/$VNC_PORT/" /etc/nginx/sites-available/webdesktop
-sudo sed -i "s/\$HTTPS_PORT/$((VNC_PORT+1))/" /etc/nginx/sites-available/webdesktop
+sudo ln -s /etc/nginx/sites-available/webos /etc/nginx/sites-enabled/webos
+sudo sed -i "s/\$HTTP_PORT/$VNC_PORT/" /etc/nginx/sites-available/webos
+sudo sed -i "s/\$HTTPS_PORT/$((VNC_PORT+1))/" /etc/nginx/sites-available/webos
 
 if [ ! $VNC_USER ]; then
     VNC_USER=user
@@ -24,9 +24,8 @@ vncserver -select-de XFCE -disableBasicAuth -SecurityTypes None -sslOnly 0 -webs
 
 sudo service dbus start
 pulseaudio --start
-node /kclient/index.js &
+node /usr/local/lib/kclient/index.js &
 sudo service nginx start
-xfce4-screensaver-command -i &
 
 mkdir -p $HOME/Desktop
 

@@ -1,5 +1,5 @@
 [Desktop Entry]
-Icon=/usr/local/share/JetBrains/Toolbox/toolbox.svg
+Icon=/usr/local/share/JetBrains/Toolbox/jetbrains-toolbox.svg
 Exec=/usr/local/bin/jetbrains-toolbox %u
 Version=1.0
 Type=Application
