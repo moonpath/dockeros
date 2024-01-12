@@ -1,0 +1,47 @@
+#!/bin/bash
+set -x
+
+sudo chown `whoami`:`whoami` $HOME
+cp -n /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/
+
+if [ ! $VNC_PORT ]; then
+    VNC_PORT=3000
+fi
+
+sudo ln -s /etc/nginx/sites-available/webdesktop /etc/nginx/sites-enabled/webdesktop
+sudo sed -i "s/\$HTTP_PORT/$VNC_PORT/" /etc/nginx/sites-available/webdesktop
+sudo sed -i "s/\$HTTPS_PORT/$((VNC_PORT+1))/" /etc/nginx/sites-available/webdesktop
+
+if [ ! $VNC_USER ]; then
+    VNC_USER=user
+fi
+if [ ! $VNC_PASSWD ]; then
+    VNC_PASSWD=password
+fi
+echo -e "$VNC_PASSWD\n$VNC_PASSWD\n" | vncpasswd -u $VNC_USER -o -w -r
+rm -rf /tmp/.X1-lock /tmp/.X11-unix
+vncserver -select-de XFCE -disableBasicAuth -SecurityTypes None -sslOnly 0 -websocketPort 6901 :1
+
+sudo service dbus start
+pulseaudio --start
+node /kclient/index.js &
+sudo service nginx start
+xfce4-screensaver-command -i &
+
+mkdir -p $HOME/Desktop
+
+cp -n /usr/share/applications/code.desktop $HOME/Desktop/code.desktop
+chmod 755 $HOME/Desktop/code.desktop
+
+cp -n /usr/share/applications/microsoft-edge.desktop $HOME/Desktop/microsoft-edge.desktop
+chmod 755 $HOME/Desktop/microsoft-edge.desktop
+
+cp -n /usr/local/share/JetBrains/Toolbox/jetbrains-toolbox.desktop $HOME/Desktop/
+chmod 755 $HOME/Desktop/jetbrains-toolbox.desktop
+
+if [ -f ~/.startup ]; then
+    . ~/.startup
+fi
+
+set -ex
+exec "$@"

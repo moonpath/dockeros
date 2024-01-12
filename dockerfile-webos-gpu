@@ -1,0 +1,117 @@
+ARG BASE_IMAGE="nvidia/cuda:11.7.0-cudnn8-devel-ubuntu22.04"
+FROM $BASE_IMAGE as base_image
+
+ARG CONFIG_DIR_SRC="/dockerconfig"
+ARG DEBIAN_FRONTEND=noninteractive
+ARG USER=admin
+
+# set timezone
+ENV LANGUAGE=C.UTF-8
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
+
+RUN apt update && apt install -y apt-utils
+
+RUN adduser $USER --disabled-password --gecos ''
+RUN apt install -y sudo && echo "$USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+# install build tools
+RUN apt install -y curl wget git
+
+# install desktop services
+RUN apt install -y dbus-x11 libdbus-glib-1-2 libpulse-dev xfce4 xfce4-terminal
+
+# install language support
+RUN apt install -y language-pack-zh* fonts-droid-fallback ttf-wqy-zenhei ttf-wqy-microhei fonts-arphic-ukai fonts-arphic-uming
+
+# install web services
+RUN apt install -y nginx nodejs npm
+
+# install kasmvncserver
+RUN wget https://github.com/kasmtech/KasmVNC/releases/download/v1.2.0/kasmvncserver_jammy_1.2.0_amd64.deb && \
+	apt install -y ./kasmvncserver_*.deb && \
+	addgroup $USER ssl-cert && \
+	rm -rf kasmvncserver_*.deb
+
+# grab source
+RUN mkdir -p /kclient && \
+	if [ -z ${KCLIENT_RELEASE+x} ]; then \
+	KCLIENT_RELEASE=$(curl -sX GET "https://api.github.com/repos/linuxserver/kclient/releases/latest" \
+	| awk '/tag_name/{print $4;exit}' FS='[""]'); \
+	fi && \
+	curl -o /tmp/kclient.tar.gz -L "https://github.com/linuxserver/kclient/archive/${KCLIENT_RELEASE}.tar.gz" && \
+	tar xf /tmp/kclient.tar.gz -C /kclient/ --strip-components=1
+
+# install node modules
+RUN cd /kclient && \
+	npm install && \
+	rm -f package-lock.json
+
+COPY $CONFIG_DIR_SRC/webdesktop.conf /etc/nginx/sites-available/webdesktop
+
+# install frp
+RUN wget https://github.com/fatedier/frp/releases/download/v0.48.0/frp_0.48.0_linux_amd64.tar.gz && \
+	tar -zxvf frp_0.48.0_linux_amd64.tar.gz && \
+	mv frp_0.48.0_linux_amd64 /usr/local/lib/frp && \
+	rm frp_0.48.0_linux_amd64.tar.gz && \
+	ln -s /usr/local/lib/frp/frpc /usr/local/bin/frpc && \
+	ln -s /usr/local/lib/frp/frps /usr/local/bin/frps
+
+# install vscode and edge
+RUN curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg && \
+	install -o root -g root -m 644 microsoft.gpg /etc/apt/trusted.gpg.d/ && \
+	sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" > /etc/apt/sources.list.d/microsoft-vscode.list' && \
+	sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/edge stable main" > /etc/apt/sources.list.d/microsoft-edge.list' && \
+	rm microsoft.gpg && \
+	apt update && \
+	apt install -y code && \
+	apt install -y microsoft-edge-stable
+
+COPY $CONFIG_DIR_SRC/jetbrains-toolbox.sh jetbrains-toolbox.sh
+COPY $CONFIG_DIR_SRC/toolbox.svg /usr/local/share/JetBrains/Toolbox/toolbox.svg
+COPY $CONFIG_DIR_SRC/jetbrains-toolbox.desktop /usr/local/share/JetBrains/Toolbox/jetbrains-toolbox.desktop
+RUN apt install -y libfuse2 libxi6 libxrender1 libxtst6 mesa-utils libfontconfig libgtk-3-bin && \
+	bash jetbrains-toolbox.sh && \
+	rm -f jetbrains-toolbox.sh
+
+RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
+	echo "deb [arch=amd64] https://download.docker.com/linux/ubuntu jammy stable" > /etc/apt/sources.list.d/docker.list && \
+	wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb && \
+	dpkg -i cuda-keyring_1.0-1_all.deb && \
+	rm -f cuda-keyring_1.0-1_all.deb && \
+	apt update && \
+	apt install -y docker-ce \
+	docker-ce-cli \
+	docker-compose-plugin \
+	nvidia-container-runtime
+COPY $CONFIG_DIR_SRC/daemon.json /etc/docker/daemon.json
+RUN sed -i "s/\$HOME/$(echo /home/$USER | sed 's/\//\\&/g')/" /etc/docker/daemon.json
+
+RUN apt install -y openssh-server && \
+	sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+
+
+RUN apt install -y \
+	iproute2 \
+	iputils-ping \
+	netcat \
+	socat \
+	nmap \ 
+	vim \
+	vlc
+
+# RUN apt -y autoclean \
+# && apt -y autoremove \
+# && rm -rf /var/lib/apt/lists/*
+
+RUN rm -f /etc/xdg/autostart/xscreensaver.desktop
+
+COPY $CONFIG_DIR_SRC/entrypoint.sh /.dockerinit
+RUN chmod 755 /.dockerinit
+
+USER $USER
+WORKDIR "/home/$USER"
+VOLUME "/home/$USER"
+
+CMD "/bin/bash"
+ENTRYPOINT ["/.dockerinit"]

@@ -1,0 +1,85 @@
+ARG BASE_IMAGE="nvidia/cuda:11.7.0-cudnn8-devel-ubuntu22.04"
+FROM $BASE_IMAGE as base_image
+
+ARG DEBIAN_FRONTEND noninteractive
+ARG USER=admin
+
+# set timezone
+ENV LANGUAGE=C.UTF-8
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
+
+RUN apt update && apt install -y apt-utils gnupg2
+
+RUN adduser $USER --disabled-password --gecos ''
+RUN apt install -y sudo && echo "$USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+# install build tools
+RUN apt install -y curl wget git
+
+RUN apt install -y openssh-server && \
+	sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+
+RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
+	echo "deb [arch=amd64] https://download.docker.com/linux/ubuntu jammy stable" > /etc/apt/sources.list.d/docker.list && \
+	wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb && \
+	dpkg -i cuda-keyring_1.0-1_all.deb && \
+	rm -f cuda-keyring_1.0-1_all.deb && \
+	apt update && \
+	apt install -y docker-ce \
+	docker-ce-cli \
+	docker-compose-plugin \
+	nvidia-container-runtime
+RUN echo '{' > /etc/docker/daemon.json && \
+	echo '    "runtimes": {' >> /etc/docker/daemon.json && \
+	echo '        "nvidia": {' >> /etc/docker/daemon.json && \
+	echo '            "path": "nvidia-container-runtime",' >> /etc/docker/daemon.json && \
+	echo '            "runtimeArgs": []' >> /etc/docker/daemon.json && \
+	echo '        }' >> /etc/docker/daemon.json && \
+	echo '    },' >> /etc/docker/daemon.json && \
+	echo "    \"data-root\": \"/home/$USER/.docker\"" >> /etc/docker/daemon.json && \
+	echo '}' >> /etc/docker/daemon.json
+
+RUN wget https://github.com/fatedier/frp/releases/download/v0.48.0/frp_0.48.0_linux_amd64.tar.gz && \
+	tar -zxvf frp_0.48.0_linux_amd64.tar.gz && \
+	mv frp_0.48.0_linux_amd64 /usr/local/lib/frp && \
+	rm frp_0.48.0_linux_amd64.tar.gz && \ 
+	ln -s /usr/local/lib/frp/frpc /usr/local/bin/frpc && \
+	ln -s /usr/local/lib/frp/frps /usr/local/bin/frps
+
+RUN curl -Lk 'https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64' --output vscode_cli.tar.gz && \
+	tar -zxvf vscode_cli.tar.gz && \
+	mv code /usr/local/bin/ && \
+	rm vscode_cli.tar.gz
+
+# Install dependency components.
+RUN apt install -y \
+	iproute2 \
+	iputils-ping \
+	netcat \
+	socat \
+	nmap \ 
+	vim
+
+# RUN apt -y autoclean \
+# && apt -y autoremove \
+# && rm -rf /var/lib/apt/lists/*
+
+RUN echo '#!/bin/bash' > /.dockerinit && \ 
+	echo 'set -x' >> /.dockerinit && \
+	echo 'sudo chown `whoami`:`whoami` $HOME' >> /.dockerinit && \
+	echo 'sudo service ssh start' >> /.dockerinit && \
+	echo 'cp -n /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/' >> /.dockerinit && \
+	echo 'if [ -f ~/.startup ]; then' >> /.dockerinit && \
+	echo '    . ~/.startup' >> /.dockerinit && \
+	echo 'fi' >> /.dockerinit && \
+	echo 'set -ex' >> /.dockerinit && \
+	echo 'exec "$@"' >> /.dockerinit && \
+	chmod 755 /.dockerinit
+
+USER $USER
+WORKDIR /home/$USER
+VOLUME "/home/$USER"
+
+CMD "/bin/bash"
+ENTRYPOINT ["/.dockerinit"]
