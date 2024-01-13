@@ -5,13 +5,8 @@ sudo chown `whoami`:`whoami` $HOME
 cp -n /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/
 
 if [ ! $VNC_PORT ]; then
-    VNC_PORT=3000
+    VNC_PORT=7900
 fi
-
-sudo ln -s /etc/nginx/sites-available/webos /etc/nginx/sites-enabled/webos
-sudo sed -i "s/\$HTTP_PORT/$VNC_PORT/" /etc/nginx/sites-available/webos
-sudo sed -i "s/\$HTTPS_PORT/$((VNC_PORT+1))/" /etc/nginx/sites-available/webos
-
 if [ ! $VNC_USER ]; then
     VNC_USER=user
 fi
@@ -20,7 +15,16 @@ if [ ! $VNC_PASSWD ]; then
 fi
 echo -e "$VNC_PASSWD\n$VNC_PASSWD\n" | vncpasswd -u $VNC_USER -o -w -r
 rm -rf /tmp/.X1-lock /tmp/.X11-unix
-vncserver -select-de XFCE -disableBasicAuth -SecurityTypes None -sslOnly 0 -websocketPort 6901 :1
+vncserver -select-de XFCE -disableBasicAuth -SecurityTypes None -sslOnly 0 -localhost 1 -websocketPort 6901 :1
+
+sudo ln -s /etc/nginx/sites-available/webos /etc/nginx/sites-enabled/webos
+sudo sed -i "s/\$HTTP_PORT/$VNC_PORT/" /etc/nginx/sites-available/webos
+sudo sed -i "s/\$HTTPS_PORT/$((VNC_PORT+1))/" /etc/nginx/sites-available/webos
+printf "${VNC_USER}:$(openssl passwd -apr1 ${VNC_PASSWD})\n" | sudo tee /etc/nginx/.htpasswd >>/dev/null
+
+if [ ! -z ${VNC_AUTH+x} ]; then
+  sudo sed -i 's/#//g' /etc/nginx/sites-available/webos
+fi
 
 sudo service dbus start
 pulseaudio --start
