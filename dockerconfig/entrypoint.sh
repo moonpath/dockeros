@@ -42,6 +42,8 @@ chmod 755 $HOME/Desktop/microsoft-edge.desktop
 cp -n /usr/local/share/JetBrains/Toolbox/jetbrains-toolbox.desktop $HOME/Desktop/
 chmod 755 $HOME/Desktop/jetbrains-toolbox.desktop
 
+unset VNC_PORT VNC_USER VNC_PASSWD VNC_AUTH
+
 if [ -f ~/.startup ]; then
     . ~/.startup
 fi
