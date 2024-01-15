@@ -10,24 +10,46 @@ ENV LANGUAGE=C.UTF-8
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
-RUN apt update && apt install -y apt-utils
+RUN apt update && \
+	apt install -y \
+	apt-utils \
+	gnupg2
 
 RUN adduser $USER --disabled-password --gecos ''
-RUN apt install -y sudo && echo "$USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+RUN apt install -y sudo && \
+	echo "$USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 # install build tools
-RUN apt install -y curl wget git
+RUN apt install -y \
+	curl \
+	wget \
+	git
 
 # install desktop services
-RUN apt install -y dbus-x11 libdbus-glib-1-2 libpulse-dev xfce4 xfce4-terminal
+RUN apt install -y \
+	dbus-x11 \
+	libdbus-glib-1-2 \
+	libpulse-dev \
+	vlc \
+	xfce4 \
+	xfce4-terminal
 COPY $CONFIG_DIR_SRC/xfce4-screensaver.xml /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-screensaver.xml
 COPY $CONFIG_DIR_SRC/xfce4-power-manager.xml /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml
 
 # install language support
-RUN apt install -y language-pack-zh* fonts-droid-fallback ttf-wqy-zenhei ttf-wqy-microhei fonts-arphic-ukai fonts-arphic-uming
+RUN apt install -y \
+	language-pack-zh* \
+	fonts-droid-fallback \
+	ttf-wqy-zenhei \
+	ttf-wqy-microhei \
+	fonts-arphic-ukai \
+	fonts-arphic-uming
 
 # install web services
-RUN apt install -y nginx nodejs npm
+RUN apt install -y \
+	nginx \
+	nodejs \
+	npm
 
 # install kasmvncserver
 RUN wget https://github.com/kasmtech/KasmVNC/releases/download/v1.2.0/kasmvncserver_jammy_1.2.0_amd64.deb && \
@@ -42,7 +64,9 @@ RUN cd /usr/local/lib/kclient && \
 	npm install && \
 	rm -f package-lock.json
 
-RUN apt install -y openssh-server && \
+RUN apt install -y \
+	openssh-server \
+	libpam-google-authenticator && \
 	sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
 
 RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
@@ -53,7 +77,8 @@ RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
     sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
     tee /etc/apt/sources.list.d/nvidia-container-toolkit.list && \
 	apt update && \
-	apt install -y docker-ce \
+	apt install -y \
+	docker-ce \
 	docker-ce-cli \
 	docker-compose-plugin \
 	nvidia-container-runtime
@@ -69,7 +94,8 @@ RUN wget https://github.com/fatedier/frp/releases/download/v0.48.0/frp_0.48.0_li
 	ln -s /usr/local/lib/frp/frps /usr/local/bin/frps
 
 # install vscode and edge
-RUN curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg && \
+RUN curl https://packages.microsoft.com/keys/microsoft.asc | \
+	gpg --dearmor > microsoft.gpg && \
 	install -o root -g root -m 644 microsoft.gpg /etc/apt/trusted.gpg.d/ && \
 	sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" > /etc/apt/sources.list.d/microsoft-vscode.list' && \
 	sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/edge stable main" > /etc/apt/sources.list.d/microsoft-edge.list' && \
@@ -79,7 +105,14 @@ RUN curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > mic
 	apt install -y microsoft-edge-stable
 
 COPY $CONFIG_DIR_SRC/jetbrains-toolbox.sh jetbrains-toolbox.sh
-RUN apt install -y libfuse2 libxi6 libxrender1 libxtst6 mesa-utils libfontconfig libgtk-3-bin && \
+RUN apt install -y \
+	libfuse2 \
+	libxi6 \
+	libxrender1 \
+	libxtst6 \
+	mesa-utils \
+	libfontconfig \
+	libgtk-3-bin && \
 	bash jetbrains-toolbox.sh && \
 	rm -f jetbrains-toolbox.sh
 COPY $CONFIG_DIR_SRC/jetbrains-toolbox.svg /usr/local/share/JetBrains/Toolbox/jetbrains-toolbox.svg
@@ -91,14 +124,13 @@ RUN apt install -y \
 	netcat \
 	socat \
 	nmap \ 
-	vim \
-	vlc
+	vim
 
-# RUN apt -y autoclean && \
-	# apt -y autoremove && \
-	# rm -rf /var/lib/apt/lists/* \
-	# /var/tmp/* \
-	# /tmp/*
+RUN apt -y autoclean && \
+	apt -y autoremove && \
+	rm -rf /var/lib/apt/lists/* \
+	/var/tmp/* \
+	/tmp/*
 
 COPY $CONFIG_DIR_SRC/entrypoint.sh /.dockerinit
 RUN chmod 755 /.dockerinit
