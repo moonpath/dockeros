@@ -25,8 +25,7 @@ RUN apt install -y \
 	git
 
 RUN apt install -y \
-	openssh-server \
-	libpam-google-authenticator && \
+	openssh-server && \
 	sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
 
 RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
@@ -51,13 +50,6 @@ RUN echo '{' > /etc/docker/daemon.json && \
 	echo '    },' >> /etc/docker/daemon.json && \
 	echo "    \"data-root\": \"/home/$USER/.docker\"" >> /etc/docker/daemon.json && \
 	echo '}' >> /etc/docker/daemon.json
-
-RUN wget https://github.com/fatedier/frp/releases/download/v0.48.0/frp_0.48.0_linux_amd64.tar.gz && \
-	tar -zxvf frp_0.48.0_linux_amd64.tar.gz && \
-	mv frp_0.48.0_linux_amd64 /usr/local/lib/frp && \
-	rm frp_0.48.0_linux_amd64.tar.gz && \ 
-	ln -s /usr/local/lib/frp/frpc /usr/local/bin/frpc && \
-	ln -s /usr/local/lib/frp/frps /usr/local/bin/frps
 
 RUN curl -Lk 'https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64' --output vscode_cli.tar.gz && \
 	tar -zxvf vscode_cli.tar.gz && \

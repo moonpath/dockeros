@@ -65,8 +65,7 @@ RUN cd /usr/local/lib/kclient && \
 	rm -f package-lock.json
 
 RUN apt install -y \
-	openssh-server \
-	libpam-google-authenticator && \
+	openssh-server && \
 	sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
 
 RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
@@ -84,14 +83,6 @@ RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
 	nvidia-container-runtime
 COPY $CONFIG_DIR_SRC/daemon.json /etc/docker/daemon.json
 RUN sed -i "s/\$HOME/$(echo /home/$USER | sed 's/\//\\&/g')/" /etc/docker/daemon.json
-
-# install frp
-RUN wget https://github.com/fatedier/frp/releases/download/v0.48.0/frp_0.48.0_linux_amd64.tar.gz && \
-	tar -zxvf frp_0.48.0_linux_amd64.tar.gz && \
-	mv frp_0.48.0_linux_amd64 /usr/local/lib/frp && \
-	rm frp_0.48.0_linux_amd64.tar.gz && \
-	ln -s /usr/local/lib/frp/frpc /usr/local/bin/frpc && \
-	ln -s /usr/local/lib/frp/frps /usr/local/bin/frps
 
 # install vscode and edge
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | \
