@@ -6,7 +6,12 @@ var PASSWORD = process.env.VNC_PASSWD || 'password';
 var SUBFOLDER = process.env.SUBFOLDER || '/';
 var TITLE = process.env.TITLE || 'Webos';
 var FM_HOME = process.env.HOME;
-
+var PATH;
+if (SUBFOLDER != '/') {
+  PATH = '&path=' + SUBFOLDER.substring(1) + 'websockify'
+} else {
+  PATH = false;
+}
 //// Application Variables ////
 var socketIO = require('socket.io');
 var express = require('express');
@@ -33,7 +38,7 @@ app.engine('json', require('ejs').renderFile);
 baseRouter.use('/public', express.static(__dirname + '/public'));
 baseRouter.use('/vnc', express.static("/usr/share/kasmvnc/www/"));
 baseRouter.get('/', function (req, res) {
-  res.render(__dirname + '/public/index.html', {title: TITLE});
+  res.render(__dirname + '/public/index.html', {title: TITLE, path: PATH});
 });
 baseRouter.get('/favicon.ico', function (req, res) {
   res.sendFile(__dirname + '/public/favicon.ico');

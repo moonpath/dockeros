@@ -9,21 +9,20 @@ ARG USER=admin
 ENV LANGUAGE=C.UTF-8
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
+ENV TZ=Etc/UTC
 
+# install build tools
 RUN apt update && \
 	apt install -y \
 	apt-utils \
-	gnupg2
+	gnupg2 \
+	curl \
+	wget \
+	git
 
 RUN adduser $USER --disabled-password --gecos ''
 RUN apt install -y sudo && \
 	echo "$USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-
-# install build tools
-RUN apt install -y \
-	curl \
-	wget \
-	git
 
 # install desktop services
 RUN apt install -y \
@@ -45,14 +44,8 @@ RUN apt install -y \
 	fonts-arphic-ukai \
 	fonts-arphic-uming
 
-# install web services
-RUN apt install -y \
-	nginx \
-	nodejs \
-	npm
-
 # install kasmvncserver
-RUN wget https://github.com/kasmtech/KasmVNC/releases/download/v1.2.0/kasmvncserver_jammy_1.2.0_amd64.deb && \
+RUN wget https://github.com/kasmtech/KasmVNC/releases/download/v1.3.1/kasmvncserver_jammy_1.3.1_amd64.deb && \
 	apt install -y ./kasmvncserver_*.deb && \
 	addgroup $USER ssl-cert && \
 	rm -rf kasmvncserver_*.deb
@@ -60,7 +53,11 @@ RUN wget https://github.com/kasmtech/KasmVNC/releases/download/v1.2.0/kasmvncser
 # filebrower and sound
 COPY $CONFIG_DIR_SRC/webos.conf /etc/nginx/sites-available/webos
 COPY /kclient /usr/local/lib/kclient
-RUN cd /usr/local/lib/kclient && \
+RUN apt install -y \
+	nginx \
+	nodejs \
+	npm && \
+	cd /usr/local/lib/kclient && \
 	npm install && \
 	rm -f package-lock.json
 
@@ -68,8 +65,11 @@ RUN apt install -y \
 	openssh-server && \
 	sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
 
-RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
-	echo "deb [arch=amd64] https://download.docker.com/linux/ubuntu jammy stable" > /etc/apt/sources.list.d/docker.list && \
+RUN install -m 0755 -d /etc/apt/keyrings && \
+	curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc && \
+	chmod a+r /etc/apt/keyrings/docker.asc && \
+	echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+	tee /etc/apt/sources.list.d/docker.list > /dev/null && \
 	curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
 	gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg && \
 	curl -sL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
@@ -122,6 +122,9 @@ RUN apt -y autoclean && \
 	rm -rf /var/lib/apt/lists/* \
 	/var/tmp/* \
 	/tmp/*
+
+COPY $CONFIG_DIR_SRC/kclient.sh /etc/init.d/kclient
+RUN chmod 755 /etc/init.d/kclient
 
 COPY $CONFIG_DIR_SRC/entrypoint.sh /.dockerinit
 RUN chmod 755 /.dockerinit

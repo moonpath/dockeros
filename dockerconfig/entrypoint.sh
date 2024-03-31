@@ -17,6 +17,8 @@ echo -e "$VNC_PASSWD\n$VNC_PASSWD\n" | vncpasswd -u $VNC_USER -o -w -r
 rm -rf /tmp/.X1-lock /tmp/.X11-unix
 vncserver -select-de XFCE -disableBasicAuth -SecurityTypes None -sslOnly 0 -localhost 1 -websocketPort 6901 :1
 
+sudo sed -i "s/EXEUSER=\"[^\"]*\"/EXEUSER=\"`whoami`\"/" /etc/init.d/kclient
+
 sudo ln -s /etc/nginx/sites-available/webos /etc/nginx/sites-enabled/webos
 sudo sed -i "s/\$HTTP_PORT/$VNC_PORT/" /etc/nginx/sites-available/webos
 sudo sed -i "s/\$HTTPS_PORT/$((VNC_PORT+1))/" /etc/nginx/sites-available/webos
@@ -28,7 +30,7 @@ fi
 
 sudo service dbus start
 pulseaudio --start
-node /usr/local/lib/kclient/index.js &
+sudo service kclient start
 sudo service nginx start
 
 mkdir -p $HOME/Desktop
