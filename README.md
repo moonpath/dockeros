@@ -17,33 +17,32 @@ These images contain the following services:
 * [MS Edge](https://www.microsoft.com/en-us/edge) - Microsoft Edge browser(base Google Chrome) for web browsing.
 * [VLC](https://www.videolan.org/vlc/index.html) - Media player that can be used to play audio and video files.
 
-## User Guide
-### Scenarios
+## Scenarios
 Just open a browser and visit http://localhost:7900
 (the address and port may be different depending on your settings).
-#### 1. Have a Visual Desktop Environment in Docker Container
+### 1. Have a Visual Desktop Environment in Docker Container
 ![XFCE Desktop](scenarios/desktop.png)
 
-#### 2. Programming with Vscode in Docker Container
+### 2. Programming with Vscode in Docker Container
 ![Vscode](scenarios/vscode.png)
 
-#### 3. Programming with Jetbrains IntelliJ Idea in Docker Container
+### 3. Programming with Jetbrains IntelliJ Idea in Docker Container
 ![Vscode](scenarios/jetbrains.png)
 
-#### 4. Browsing with MS Edge in Docker Container
+### 4. Browsing with MS Edge in Docker Container
 ![MS Edge](scenarios/browser.png)
 
-#### 5. Playing Media with VLC in Docker Container
+### 5. Playing Media with VLC in Docker Container
 ![VLC](scenarios/vlc.png)
 
-#### 6. SSH Access and Test CUDA in Docker Container
+### 6. SSH Access and Test CUDA in Docker Container
 ![SSH](scenarios/ssh.png)
 
-#### 7. Upload or Download Files via Browser in Docker Container
+### 7. Upload or Download Files via Browser in Docker Container
 ![VLC](scenarios/transfer.png)
 
-### Run Container From Docker Hub Images
-#### 1. CPU Version with Desktop
+## Run Container From Docker Hub Images
+### 1. CPU Version with Desktop
 ```shell
 sudo docker run -itd \
 --privileged \
@@ -57,7 +56,7 @@ sudo docker run -itd \
 moonpath/webos:latest
 ```
 
-#### 2. GPU Version with Desktop
+### 2. GPU Version with Desktop
 ```shell
 sudo docker run -itd \
 --runtime nvidia \
@@ -73,7 +72,7 @@ sudo docker run -itd \
 moonpath/webos-gpu:latest
 ```
 
-#### 3. CPU Version without Desktop
+### 3. CPU Version without Desktop
 ```shell
 sudo docker run -itd \
 --privileged \
@@ -83,7 +82,7 @@ sudo docker run -itd \
 moonpath/devos:latest
 ```
 
-#### 4. GPU Version without Desktop
+### 4. GPU Version without Desktop
 ```shell
 sudo docker run -itd \
 --runtime nvidia \
@@ -95,9 +94,9 @@ sudo docker run -itd \
 moonpath/devos-gpu:latest
 ```
 
-### Build Docker Image and Run Container
+## Build Docker Image and Run Container
 
-#### 1. CPU Version with Desktop
+### 1. CPU Version with Desktop
 ```shell
 # Clone repository
 git clone https://github.com/moonpath/dockeros.git
@@ -121,7 +120,7 @@ sudo docker run -itd \
 webos:latest
 ```
 
-#### 2. GPU Version with Desktop
+### 2. GPU Version with Desktop
 ```shell
 # Clone repository
 git clone https://github.com/moonpath/dockeros.git
@@ -145,7 +144,7 @@ sudo docker run -itd \
 webos-gpu:latest
 ```
 
-#### 3. CPU Version without Desktop
+### 3. CPU Version without Desktop
 ```shell
 # Clone repository
 git clone https://github.com/moonpath/dockeros.git
@@ -165,7 +164,7 @@ sudo docker run -itd \
 devos:latest
 ```
 
-#### 4. GPU Version without Desktop
+### 4. GPU Version without Desktop
 ```shell
 # Clone repository
 git clone https://github.com/moonpath/dockeros.git
