@@ -35,7 +35,11 @@ services:
     ports:
       - "7900:7900/tcp"
     volumes:
-      - webos:/home/admin
+      - type: volume
+        source: webos
+        target: /home/admin
+        volume:
+          nocopy: true
     deploy:
       resources:
         reservations:

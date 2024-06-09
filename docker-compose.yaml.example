@@ -30,7 +30,11 @@ services:
     ports:
       - "2222:22/tcp"
     volumes:
-      - devos:/home
+      - type: volume
+        source: devos
+        target: /home/admin
+        volume:
+          nocopy: true 
 
   devos-gpu:
     image: moonpath/devos-gpu:latest
@@ -47,7 +51,11 @@ services:
     ports:
       - "2222:22/tcp"
     volumes:
-      - devos-gpu:/home
+      - type: volume
+        source: devos-gpu
+        target: /home/admin
+        volume:
+          nocopy: true 
     deploy:
       resources:
         reservations:
@@ -75,7 +83,11 @@ services:
     ports:
       - "7900:7900/tcp"
     volumes:
-      - webos:/home
+      - type: volume
+        source: webos
+        target: /home/admin
+        volume:
+          nocopy: true 
 
   webos-gpu:
     image: moonpath/webos-gpu:latest
@@ -96,7 +108,11 @@ services:
     ports:
       - "7900:7900/tcp"
     volumes:
-      - webos-gpu:/home
+      - type: volume
+        source: webos-gpu
+        target: /home/admin
+        volume:
+          nocopy: true 
     deploy:
       resources:
         reservations:
