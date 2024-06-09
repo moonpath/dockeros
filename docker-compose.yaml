@@ -1,85 +1,20 @@
 version: '3'
 
-volumes:
-  devos:
-    name: devos
-    driver: local
-  devos-gpu:
-    name: devos-gpu
-    driver: local
+networks:
   webos:
     name: webos
-    driver: local
-  webos-gpu:
-    name: webos-gpu
-    driver: local
+    driver: bridge
+
+volumes:
+  webos:
+    name: webos
+    # driver: local
+    external: true
 
 services:
-  devos:
-    image: moonpath/devos:latest
-    container_name: devos
-    hostname: linux
-    shm_size: 16g
-    privileged: true
-    restart: unless-stopped
-    stdin_open: true
-    tty: true
-    build:
-      context: .
-      dockerfile: dockerfile-devos
-    ports:
-      - "2222:22/tcp"
-    volumes:
-      - devos:/home/admin
-
-  devos-gpu:
-    image: moonpath/devos-gpu:latest
-    container_name: devos-gpu
-    hostname: linux
-    shm_size: 16g
-    privileged: true
-    restart: unless-stopped
-    stdin_open: true
-    tty: true
-    build:
-      context: .
-      dockerfile: dockerfile-devos-gpu
-    ports:
-      - "2222:22/tcp"
-    volumes:
-      - devos-gpu:/home/admin
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-
   webos:
-    image: moonpath/webos:latest
-    container_name: webos
-    hostname: linux
-    shm_size: 16g
-    privileged: true
-    restart: unless-stopped
-    stdin_open: true
-    tty: true
-    build:
-      context: .
-      dockerfile: dockerfile-webos
-    environment:
-      VNC_PORT: "7900"
-      VNC_USER: "admin"
-      VNC_PASSWD: "123456"
-    ports:
-      - "7900:7900/tcp"
-    volumes:
-      - webos:/home/admin
-
-  webos-gpu:
     image: moonpath/webos-gpu:latest
-    container_name: webos-gpu
+    container_name: webos
     hostname: linux
     shm_size: 16g
     privileged: true
@@ -91,12 +26,16 @@ services:
       dockerfile: dockerfile-webos-gpu
     environment:
       VNC_PORT: "7900"
-      VNC_USER: "admin"
-      VNC_PASSWD: "123456"
+      VNC_USER: admin
+      VNC_PASSWD: nimda#A
+      LANGUAGE: C.UTF-8
+      LC_ALL: C.UTF-8
+      LANG: C.UTF-8
+      TZ: Etc/UTC
     ports:
       - "7900:7900/tcp"
     volumes:
-      - webos-gpu:/home/admin
+      - webos:/home/admin
     deploy:
       resources:
         reservations:
@@ -104,3 +43,4 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+ 
