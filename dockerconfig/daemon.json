@@ -5,5 +5,5 @@
             "runtimeArgs": []
         }
     },
-    "data-root": "$HOME/.docker"
+    "data-root": "$HOME/.docker_data_root"
 }
