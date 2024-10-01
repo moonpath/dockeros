@@ -1,32 +1,37 @@
-ARG BASE_IMAGE="ubuntu:22.04"
-FROM $BASE_IMAGE as base_image
+ARG BASE_IMAGE="ubuntu:24.04"
+FROM $BASE_IMAGE AS base_image
 
 ARG DEBIAN_FRONTEND noninteractive
 ARG USER=admin
 
-# set timezone
+# Set timezone
 ENV LANGUAGE=C.UTF-8
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 ENV TZ=Etc/UTC
 
-# install build tools
-RUN apt update && \
-	apt install -y \
+# Install build tools
+RUN apt-get update && \
+	apt-get install -y \
 	apt-utils \
-	gnupg2 \
+	ca-certificates \
 	curl \
 	wget \
-	git
+	git \
+	gnupg2
 
+# Add user
 RUN adduser $USER --disabled-password --gecos ''
-RUN apt install -y sudo && \
-	echo "$USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+RUN apt-get install -y sudo && \
+	echo "$USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$USER && \
+	chmod 440 /etc/sudoers.d/$USER
 
-RUN apt install -y \
+# Install SSH server
+RUN apt-get install -y \
 	openssh-server && \
 	sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
 
+# Install Docker and NVIDIA runtime
 RUN install -m 0755 -d /etc/apt/keyrings && \
 	curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc && \
 	chmod a+r /etc/apt/keyrings/docker.asc && \
@@ -37,10 +42,12 @@ RUN install -m 0755 -d /etc/apt/keyrings && \
 	curl -sL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
     sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
     tee /etc/apt/sources.list.d/nvidia-container-toolkit.list && \
-	apt update && \
-	apt install -y \
+	apt-get update && \
+	apt-get install -y \
 	docker-ce \
 	docker-ce-cli \
+	containerd.io \
+	docker-buildx-plugin \
 	docker-compose-plugin \
 	nvidia-container-runtime
 RUN echo '{' > /etc/docker/daemon.json && \
@@ -50,29 +57,32 @@ RUN echo '{' > /etc/docker/daemon.json && \
 	echo '            "runtimeArgs": []' >> /etc/docker/daemon.json && \
 	echo '        }' >> /etc/docker/daemon.json && \
 	echo '    },' >> /etc/docker/daemon.json && \
-	echo "    \"data-root\": \"/home/$USER/.docker\"" >> /etc/docker/daemon.json && \
+	echo "    \"data-root\": \"/home/$USER/.docker_data_root\"" >> /etc/docker/daemon.json && \
 	echo '}' >> /etc/docker/daemon.json
 
+# Install Visual Studio Code CLI
 RUN curl -Lk 'https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64' --output vscode_cli.tar.gz && \
 	tar -zxvf vscode_cli.tar.gz && \
 	mv code /usr/local/bin/ && \
 	rm vscode_cli.tar.gz
 
 # Install dependency components.
-RUN apt install -y \
+RUN apt-get install -y \
 	iproute2 \
 	iputils-ping \
-	netcat \
-	socat \
+	netcat-openbsd \
 	nmap \ 
+	socat \
 	vim
 
-RUN apt -y autoclean && \
-	apt -y autoremove && \
+# Clean up
+RUN apt-get -y autoclean && \
+	apt-get -y autoremove && \
 	rm -rf /var/lib/apt/lists/* \
 	/var/tmp/* \
 	/tmp/*
 
+# Create docker init script
 RUN echo '#!/bin/bash' > /.dockerinit && \ 
 	echo 'set -x' >> /.dockerinit && \
 	echo 'sudo chown `whoami`:`whoami` $HOME' >> /.dockerinit && \

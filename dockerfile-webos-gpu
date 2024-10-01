@@ -1,31 +1,34 @@
-ARG BASE_IMAGE="nvidia/cuda:12.0.0-cudnn8-devel-ubuntu22.04"
-FROM $BASE_IMAGE as base_image
+ARG BASE_IMAGE="nvidia/cuda:12.6.1-cudnn-runtime-ubuntu24.04"
+FROM $BASE_IMAGE AS base_image
 
 ARG CONFIG_DIR_SRC="/dockerconfig"
 ARG DEBIAN_FRONTEND=noninteractive
 ARG USER=admin
 
-# set timezone
+# Set timezone
 ENV LANGUAGE=C.UTF-8
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 ENV TZ=Etc/UTC
 
-# install build tools
-RUN apt update && \
-	apt install -y \
+# Install build tools
+RUN apt-get update && \
+	apt-get install -y \
 	apt-utils \
-	gnupg2 \
+	ca-certificates \
 	curl \
 	wget \
-	git
+	git \
+	gnupg2
 
+# Add user
 RUN adduser $USER --disabled-password --gecos ''
-RUN apt install -y sudo && \
-	echo "$USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+RUN apt-get install -y sudo && \
+	echo "$USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$USER && \
+	chmod 440 /etc/sudoers.d/$USER
 
-# install desktop services
-RUN apt install -y \
+# Install desktop services
+RUN apt-get install -y \
 	dbus-x11 \
 	libdbus-glib-1-2 \
 	libpulse-dev \
@@ -35,8 +38,8 @@ RUN apt install -y \
 COPY $CONFIG_DIR_SRC/xfce4-screensaver.xml /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-screensaver.xml
 COPY $CONFIG_DIR_SRC/xfce4-power-manager.xml /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml
 
-# install language support
-RUN apt install -y \
+# Install language support
+RUN apt-get install -y \
 	language-pack-zh* \
 	fonts-droid-fallback \
 	ttf-wqy-zenhei \
@@ -44,27 +47,41 @@ RUN apt install -y \
 	fonts-arphic-ukai \
 	fonts-arphic-uming
 
-# install kasmvncserver
-RUN wget https://github.com/kasmtech/KasmVNC/releases/download/v1.3.1/kasmvncserver_jammy_1.3.1_amd64.deb && \
-	apt install -y ./kasmvncserver_*.deb && \
-	addgroup $USER ssl-cert && \
+# Install kasmvncserver
+RUN KASMVNC_RELEASE=$(curl -sX GET "https://api.github.com/repos/kasmtech/KasmVNC/releases/latest" | \
+	awk '/tag_name/{print $4;exit}' FS='[""]') && \
+	SYSTEM_VERSION=$(grep VERSION_CODENAME /etc/os-release | cut -d'=' -f2) && \
+	wget https://github.com/kasmtech/KasmVNC/releases/download/${KASMVNC_RELEASE}/kasmvncserver_${SYSTEM_VERSION}_${KASMVNC_RELEASE#v}_amd64.deb && \
+	apt-get install -y ./kasmvncserver_*.deb && \
+	usermod -aG ssl-cert $USER && \
 	rm -rf kasmvncserver_*.deb
 
-# filebrower and sound
+# Add filebrower and sound service
 COPY $CONFIG_DIR_SRC/webos.conf /etc/nginx/sites-available/webos
-COPY /kclient /usr/local/lib/kclient
-RUN apt install -y \
+COPY $CONFIG_DIR_SRC/set-title.sh /tmp/set-title.sh
+RUN apt-get install -y \
 	nginx \
 	nodejs \
 	npm && \
+    # KCLIENT_RELEASE=$(curl -sX GET "https://api.github.com/repos/linuxserver/kclient/releases/latest" | \
+	# awk '/tag_name/{print $4;exit}' FS='[""]') && \
+	KCLIENT_RELEASE=0.3.10 && \
+	curl -o /tmp/kclient.tar.gz -L "https://github.com/linuxserver/kclient/archive/${KCLIENT_RELEASE}.tar.gz" && \
+	mkdir -p /usr/local/lib/kclient && \
+	tar xzf /tmp/kclient.tar.gz -C /usr/local/lib/kclient/ --strip-components=1 && \
 	cd /usr/local/lib/kclient && \
+	bash /tmp/set-title.sh && \
 	npm install && \
 	rm -f package-lock.json
+COPY $CONFIG_DIR_SRC/favicon.ico /usr/local/lib/kclient/public/favicon.ico 
+COPY $CONFIG_DIR_SRC/icon.png /usr/local/lib/kclient/public/icon.png
 
-RUN apt install -y \
+# Install SSH server
+RUN apt-get install -y \
 	openssh-server && \
 	sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
 
+# Install Docker and NVIDIA runtime
 RUN install -m 0755 -d /etc/apt/keyrings && \
 	curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc && \
 	chmod a+r /etc/apt/keyrings/docker.asc && \
@@ -75,28 +92,31 @@ RUN install -m 0755 -d /etc/apt/keyrings && \
 	curl -sL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
     sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
     tee /etc/apt/sources.list.d/nvidia-container-toolkit.list && \
-	apt update && \
-	apt install -y \
+	apt-get update && \
+	apt-get install -y \
 	docker-ce \
 	docker-ce-cli \
+	containerd.io \
+	docker-buildx-plugin \
 	docker-compose-plugin \
 	nvidia-container-runtime
 COPY $CONFIG_DIR_SRC/daemon.json /etc/docker/daemon.json
 RUN sed -i "s/\$HOME/$(echo /home/$USER | sed 's/\//\\&/g')/" /etc/docker/daemon.json
 
-# install vscode and edge
+# Install vscode and edge
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | \
 	gpg --dearmor > microsoft.gpg && \
 	install -o root -g root -m 644 microsoft.gpg /etc/apt/trusted.gpg.d/ && \
 	sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" > /etc/apt/sources.list.d/microsoft-vscode.list' && \
 	sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/edge stable main" > /etc/apt/sources.list.d/microsoft-edge.list' && \
 	rm microsoft.gpg && \
-	apt update && \
-	apt install -y code && \
-	apt install -y microsoft-edge-stable
+	apt-get update && \
+	apt-get install -y code && \
+	apt-get install -y microsoft-edge-stable
 
+# Install JetBrains Toolbox
 COPY $CONFIG_DIR_SRC/jetbrains-toolbox.sh jetbrains-toolbox.sh
-RUN apt install -y \
+RUN apt-get install -y \
 	libfuse2 \
 	libxi6 \
 	libxrender1 \
@@ -109,23 +129,27 @@ RUN apt install -y \
 COPY $CONFIG_DIR_SRC/jetbrains-toolbox.svg /usr/local/share/JetBrains/Toolbox/jetbrains-toolbox.svg
 COPY $CONFIG_DIR_SRC/jetbrains-toolbox.desktop /usr/local/share/JetBrains/Toolbox/jetbrains-toolbox.desktop
 
-RUN apt install -y \
+# Install dependency components
+RUN apt-get install -y \
 	iproute2 \
 	iputils-ping \
-	netcat \
-	socat \
+	netcat-openbsd \
 	nmap \ 
+	socat \
 	vim
 
-RUN apt -y autoclean && \
-	apt -y autoremove && \
+# Clean up
+RUN apt-get -y autoclean && \
+	apt-get -y autoremove && \
 	rm -rf /var/lib/apt/lists/* \
 	/var/tmp/* \
 	/tmp/*
 
+# Set up filebrower and sound service
 COPY $CONFIG_DIR_SRC/kclient.sh /etc/init.d/kclient
 RUN chmod 755 /etc/init.d/kclient
 
+# Create docker init script
 COPY $CONFIG_DIR_SRC/entrypoint.sh /.dockerinit
 RUN chmod 755 /.dockerinit
 

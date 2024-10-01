@@ -13,6 +13,9 @@ fi
 if [ ! $VNC_PASSWD ]; then
     VNC_PASSWD=password
 fi
+if [ ! $SUBFOLDER ]; then
+    SUBFOLDER=/
+fi
 echo -e "$VNC_PASSWD\n$VNC_PASSWD\n" | vncpasswd -u $VNC_USER -o -w -r
 rm -rf /tmp/.X1-lock /tmp/.X11-unix
 vncserver -select-de XFCE -disableBasicAuth -SecurityTypes None -sslOnly 0 -localhost 1 -websocketPort 6901 :1
@@ -22,6 +25,7 @@ sudo sed -i "s/EXEUSER=\"[^\"]*\"/EXEUSER=\"`whoami`\"/" /etc/init.d/kclient
 sudo ln -s /etc/nginx/sites-available/webos /etc/nginx/sites-enabled/webos
 sudo sed -i "s/\$HTTP_PORT/$VNC_PORT/" /etc/nginx/sites-available/webos
 sudo sed -i "s/\$HTTPS_PORT/$((VNC_PORT+1))/" /etc/nginx/sites-available/webos
+sudo sed -i "s|\$SUBFOLDER|$SUBFOLDER|g" /etc/nginx/sites-available/webos
 printf "${VNC_USER}:$(openssl passwd -apr1 ${VNC_PASSWD})\n" | sudo tee /etc/nginx/.htpasswd >>/dev/null
 
 if [ ! -z ${VNC_AUTH+x} ]; then
@@ -29,7 +33,7 @@ if [ ! -z ${VNC_AUTH+x} ]; then
 fi
 
 sudo service dbus start
-pulseaudio --start
+pulseaudio --start --disallow-exit --exit-idle-time=-1
 sudo service kclient start
 sudo service nginx start
 
@@ -43,8 +47,6 @@ chmod 755 $HOME/Desktop/microsoft-edge.desktop
 
 cp -n /usr/local/share/JetBrains/Toolbox/jetbrains-toolbox.desktop $HOME/Desktop/
 chmod 755 $HOME/Desktop/jetbrains-toolbox.desktop
-
-unset VNC_PORT VNC_USER VNC_PASSWD VNC_AUTH
 
 if [ -f ~/.startup ]; then
     . ~/.startup
