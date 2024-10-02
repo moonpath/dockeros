@@ -34,7 +34,12 @@ RUN apt-get install -y \
 	libpulse-dev \
 	vlc \
 	xfce4 \
-	xfce4-terminal
+	xfce4-terminal && \
+	apt-get remove -y \
+	light-locker \
+	light-locker-settings && \
+	rm -f /etc/xdg/autostart/light-locker.desktop \
+	/etc/xdg/autostart/xscreensaver.desktop
 COPY $CONFIG_DIR_SRC/xfce4-screensaver.xml /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-screensaver.xml
 COPY $CONFIG_DIR_SRC/xfce4-power-manager.xml /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml
 
