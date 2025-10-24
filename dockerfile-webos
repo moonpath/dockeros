@@ -4,6 +4,8 @@ FROM $BASE_IMAGE AS base_image
 ARG CONFIG_DIR_SRC="/dockerconfig"
 ARG DEBIAN_FRONTEND=noninteractive
 ARG USER=admin
+ARG UID=1100
+ARG GID=1100
 
 # Set timezone
 ENV LANGUAGE=C.UTF-8
@@ -22,7 +24,7 @@ RUN apt-get update && \
 	gnupg2
 
 # Add user
-RUN adduser $USER --disabled-password --gecos ''
+RUN groupadd -g $GID $USER && adduser --uid $UID --gid $GID $USER --disabled-password --gecos ''
 RUN apt-get install -y sudo && \
 	echo "$USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$USER && \
 	chmod 440 /etc/sudoers.d/$USER
