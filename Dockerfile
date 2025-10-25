@@ -1,17 +1,19 @@
-ARG BASE_IMAGE="nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04"
+ARG BASE_IMAGE="ubuntu:24.04"
+# ARG BASE_IMAGE="nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04"
 FROM $BASE_IMAGE AS base_image
 
-ARG CONFIG_DIR_SRC="/dockerconfig"
 ARG DEBIAN_FRONTEND=noninteractive
 ARG USER=admin
 ARG UID=1100
 ARG GID=1100
+ARG LC_ALL=C.UTF-8
+ARG LANG=C.UTF-8
+ARG TZ=Etc/UTC
 
 # Set timezone
-ENV LANGUAGE=C.UTF-8
-ENV LC_ALL=C.UTF-8
-ENV LANG=C.UTF-8
-ENV TZ=Etc/UTC
+ENV LC_ALL=$LC_ALL
+ENV LANG=$LANG
+ENV TZ=$TZ
 
 # Install build tools
 RUN apt-get update && \
@@ -42,17 +44,12 @@ RUN apt-get install -y \
 	light-locker-settings && \
 	rm -f /etc/xdg/autostart/light-locker.desktop \
 	/etc/xdg/autostart/xscreensaver.desktop
-COPY $CONFIG_DIR_SRC/xfce4-screensaver.xml /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-screensaver.xml
-COPY $CONFIG_DIR_SRC/xfce4-power-manager.xml /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml
+COPY /root/etc/xdg /etc/xdg
 
 # Install language support
 RUN apt-get install -y \
 	language-pack-zh* \
-	fonts-droid-fallback \
-	ttf-wqy-zenhei \
-	ttf-wqy-microhei \
-	fonts-arphic-ukai \
-	fonts-arphic-uming
+	fonts-noto
 
 # Install kasmvncserver
 RUN KASMVNC_RELEASE=$(curl -sX GET "https://api.github.com/repos/kasmtech/KasmVNC/releases/latest" | \
@@ -64,8 +61,8 @@ RUN KASMVNC_RELEASE=$(curl -sX GET "https://api.github.com/repos/kasmtech/KasmVN
 	rm -rf kasmvncserver_*.deb
 
 # Add filebrower and sound service
-COPY $CONFIG_DIR_SRC/webos.conf /etc/nginx/sites-available/webos
-COPY $CONFIG_DIR_SRC/set-title.sh /tmp/set-title.sh
+COPY /root/etc/nginx /etc/nginx
+COPY /root/tmp/set-title.sh /tmp/set-title.sh
 RUN apt-get install -y \
 	nginx \
 	nodejs \
@@ -80,8 +77,7 @@ RUN apt-get install -y \
 	bash /tmp/set-title.sh && \
 	npm install && \
 	rm -f package-lock.json
-COPY $CONFIG_DIR_SRC/favicon.ico /usr/local/lib/kclient/public/favicon.ico 
-COPY $CONFIG_DIR_SRC/icon.png /usr/local/lib/kclient/public/icon.png
+COPY /root/usr/local/lib/kclient /usr/local/lib/kclient
 
 # Install SSH server
 RUN apt-get install -y \
@@ -106,8 +102,9 @@ RUN install -m 0755 -d /etc/apt/keyrings && \
 	containerd.io \
 	docker-buildx-plugin \
 	docker-compose-plugin \
-	nvidia-container-runtime
-COPY $CONFIG_DIR_SRC/daemon.json /etc/docker/daemon.json
+	nvidia-container-runtime && \
+	usermod -aG docker $USER
+COPY /root/etc/docker/daemon.json /etc/docker/daemon.json
 RUN sed -i "s/\$HOME/$(echo /home/$USER | sed 's/\//\\&/g')/" /etc/docker/daemon.json
 
 # Install vscode and edge
@@ -122,7 +119,7 @@ RUN curl https://packages.microsoft.com/keys/microsoft.asc | \
 	apt-get install -y microsoft-edge-stable
 
 # Install JetBrains Toolbox
-COPY $CONFIG_DIR_SRC/jetbrains-toolbox.sh jetbrains-toolbox.sh
+COPY /root/tmp/jetbrains-toolbox.sh /tmp/jetbrains-toolbox.sh
 RUN apt-get install -y \
 	libfuse2 \
 	libxi6 \
@@ -131,10 +128,8 @@ RUN apt-get install -y \
 	mesa-utils \
 	libfontconfig \
 	libgtk-3-bin && \
-	bash jetbrains-toolbox.sh && \
-	rm -f jetbrains-toolbox.sh
-COPY $CONFIG_DIR_SRC/jetbrains-toolbox.svg /usr/local/share/JetBrains/Toolbox/jetbrains-toolbox.svg
-COPY $CONFIG_DIR_SRC/jetbrains-toolbox.desktop /usr/local/share/JetBrains/Toolbox/jetbrains-toolbox.desktop
+	bash /tmp/jetbrains-toolbox.sh
+COPY /root/usr/local/share/JetBrains /usr/local/share/JetBrains
 
 # Install dependency components
 RUN apt-get install -y \
@@ -153,16 +148,16 @@ RUN apt-get -y autoclean && \
 	/tmp/*
 
 # Set up filebrower and sound service
-COPY $CONFIG_DIR_SRC/kclient.sh /etc/init.d/kclient
+COPY /root/etc/init.d/kclient /etc/init.d/kclient
 RUN chmod 755 /etc/init.d/kclient
 
 # Create docker init script
-COPY $CONFIG_DIR_SRC/entrypoint.sh /.dockerinit
-RUN chmod 755 /.dockerinit
+COPY /root/usr/local/bin/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod 755 /usr/local/bin/docker-entrypoint.sh
 
 USER $USER
 WORKDIR "/home/$USER"
 VOLUME "/home/$USER"
 
-CMD "/bin/bash"
-ENTRYPOINT ["/.dockerinit"]
+CMD ["/bin/bash"]
+ENTRYPOINT ["docker-entrypoint.sh"]

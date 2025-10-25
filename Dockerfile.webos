@@ -1,4 +1,5 @@
 ARG BASE_IMAGE="ubuntu:24.04"
+# ARG BASE_IMAGE="nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04"
 FROM $BASE_IMAGE AS base_image
 
 ARG CONFIG_DIR_SRC="/dockerconfig"
@@ -6,12 +7,14 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG USER=admin
 ARG UID=1100
 ARG GID=1100
+ARG LC_ALL=C.UTF-8
+ARG LANG=C.UTF-8
+ARG TZ=Etc/UTC
 
 # Set timezone
-ENV LANGUAGE=C.UTF-8
-ENV LC_ALL=C.UTF-8
-ENV LANG=C.UTF-8
-ENV TZ=Etc/UTC
+ENV LC_ALL=$LC_ALL
+ENV LANG=$LANG
+ENV TZ=$TZ
 
 # Install build tools
 RUN apt-get update && \
@@ -48,11 +51,7 @@ COPY $CONFIG_DIR_SRC/xfce4-power-manager.xml /etc/xdg/xfce4/xfconf/xfce-perchann
 # Install language support
 RUN apt-get install -y \
 	language-pack-zh* \
-	fonts-droid-fallback \
-	ttf-wqy-zenhei \
-	ttf-wqy-microhei \
-	fonts-arphic-ukai \
-	fonts-arphic-uming
+	fonts-noto
 
 # Install kasmvncserver
 RUN KASMVNC_RELEASE=$(curl -sX GET "https://api.github.com/repos/kasmtech/KasmVNC/releases/latest" | \

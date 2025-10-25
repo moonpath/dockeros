@@ -4,17 +4,11 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 10.20.30.0/24
-
-volumes:
-  webos:
-    name: webos
-    # driver: local
-    external: true
+        - subnet: 10.20.40.0/24
 
 services:
   webos:
-    image: moonpath/webos-gpu:latest
+    image: moonpath/webos-test:latest
     container_name: webos
     hostname: linux
     shm_size: 16g
@@ -24,34 +18,19 @@ services:
     tty: true
     build:
       context: .
-      dockerfile: dockerfile-webos-gpu
+      dockerfile: Dockerfile
     environment:
       VNC_PORT: "7900"
-      VNC_USER: admin
-      VNC_PASSWD: nimda#A
-      LANGUAGE: C.UTF-8
       LC_ALL: C.UTF-8
       LANG: C.UTF-8
       TZ: Etc/UTC
     ports:
-      - "2222:22/tcp"  
-      - "8888:8888/tcp"  
+      - "8900:7900/tcp"  
     extra_hosts:
       - host.docker.internal:host-gateway
-    volumes:
-      - type: volume
-        source: webos
-        target: /home/admin
-        volume:
-          nocopy: true
     networks:
       - webos
     deploy:
       resources:
         limits:
-          memory: 28g
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+          memory: 8g
