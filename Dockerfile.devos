@@ -15,11 +15,10 @@ ENV TZ=Etc/UTC
 # Install build tools
 RUN apt-get update && \
 	apt-get install -y \
-	apt-utils \
-	ca-certificates \
 	curl \
 	wget \
 	git \
+	ca-certificates \
 	gnupg2
 
 # Add user
@@ -51,7 +50,8 @@ RUN install -m 0755 -d /etc/apt/keyrings && \
 	containerd.io \
 	docker-buildx-plugin \
 	docker-compose-plugin \
-	nvidia-container-runtime
+	nvidia-container-runtime && \
+	usermod -aG docker $USER
 RUN echo '{' > /etc/docker/daemon.json && \
 	echo '    "runtimes": {' >> /etc/docker/daemon.json && \
 	echo '        "nvidia": {' >> /etc/docker/daemon.json && \
@@ -70,12 +70,10 @@ RUN curl -Lk 'https://code.visualstudio.com/sha/download?build=stable&os=cli-alp
 
 # Install dependency components.
 RUN apt-get install -y \
+	vim \
 	iproute2 \
 	iputils-ping \
-	netcat-openbsd \
-	nmap \ 
-	socat \
-	vim
+	netcat-openbsd
 
 # Clean up
 RUN apt-get -y autoclean && \
@@ -85,22 +83,24 @@ RUN apt-get -y autoclean && \
 	/tmp/*
 
 # Create docker init script
-RUN echo '#!/bin/bash' > /.dockerinit && \ 
-	echo 'set -x' >> /.dockerinit && \
-	echo 'sudo chown `whoami`:`whoami` $HOME' >> /.dockerinit && \
-	echo 'sudo service ssh start' >> /.dockerinit && \
-	echo 'cp -n /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/' >> /.dockerinit && \
-	echo 'if [ -f ~/.startup ]; then' >> /.dockerinit && \
-	echo '    . ~/.startup' >> /.dockerinit && \
-	echo 'fi' >> /.dockerinit && \
-	echo 'set -ex' >> /.dockerinit && \
-	echo 'exec "$@"' >> /.dockerinit && \
-	chmod 755 /.dockerinit
+RUN echo '#!/bin/bash' > docker-entrypoint && \ 
+	echo 'set -x' >> docker-entrypoint && \
+	echo 'sudo chown `whoami`:`whoami` $HOME' >> docker-entrypoint && \
+	echo 'sudo service ssh start' >> docker-entrypoint && \
+	echo 'cp -n /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/' >> docker-entrypoint && \
+	echo 'if [ -f ~/.startup ]; then' >> docker-entrypoint && \
+	echo '    . ~/.startup' >> docker-entrypoint && \
+	echo 'fi' >> docker-entrypoint && \
+	echo 'set -ex' >> docker-entrypoint && \
+	echo 'exec "$@"' >> docker-entrypoint && \
+	chmod 755 docker-entrypoint && \
+	mv docker-entrypoint /usr/local/bin/
+
+EXPOSE 22
 
 USER $USER
 WORKDIR /home/$USER
 VOLUME "/home/$USER"
 
-EXPOSE 22
-CMD "/bin/bash"
-ENTRYPOINT ["/.dockerinit"]
+CMD ["bash"]
+ENTRYPOINT ["docker-entrypoint"]

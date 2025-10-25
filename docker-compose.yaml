@@ -8,7 +8,7 @@ networks:
 
 services:
   webos:
-    image: moonpath/webos-test:latest
+    image: moonpath/webos:test
     container_name: webos
     hostname: linux
     shm_size: 16g
@@ -18,12 +18,16 @@ services:
     tty: true
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.webos
+      args:
+        BASE_IMAGE: "ubuntu:24.04"
     environment:
-      VNC_PORT: "7900"
-      LC_ALL: C.UTF-8
-      LANG: C.UTF-8
-      TZ: Etc/UTC
+      VNC_PORT: ${VNC_PORT:-7900}
+      VNC_USER: ${VNC_USER:-user}
+      VNC_PASSWD: ${VNC_PASSWD:-password}
+      LC_ALL: ${LANG:-C.UTF-8}
+      LANG: ${LANG:-C.UTF-8}
+      TZ: ${TZ:-Etc/UTC}
     ports:
       - "8900:7900/tcp"  
     extra_hosts:
