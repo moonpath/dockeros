@@ -1,20 +1,20 @@
 #!/bin/bash
 set -x
 
-sudo chown `whoami`:`whoami` $HOME
+NAME=$(whoami)
+
+sudo chown $NAME:$NAME $HOME
 cp --update=none /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/
 
 : ${NOVNC_PORT:=7900}
 : ${NOVNC_USER:=user}
 : ${NOVNC_PASSWORD:=password}
 : ${NOVNC_AUTH:=false}
+
 echo -e "$NOVNC_PASSWORD\n$NOVNC_PASSWORD\n" | vncpasswd -u $NOVNC_USER -o -w -r
 for session in $(vncserver -list | grep '^:' | awk '{print $1}'); do vncserver -kill "$session"; done
 rm -rf /tmp/.X*-lock /tmp/.X11-unix
 vncserver -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 :1
-
-sudo sed -i "s/EXEUSER=\"[^\"]*\"/EXEUSER=\"`whoami`\"/" /etc/init.d/kclient
-sudo sed -i "s/EXEUSER=\"[^\"]*\"/EXEUSER=\"`whoami`\"/" /etc/init.d/pulseaudio
 
 sudo ln -s /etc/nginx/sites-available/webos /etc/nginx/sites-enabled/webos
 sudo sed -i "s/\$HTTP_PORT/$NOVNC_PORT/" /etc/nginx/sites-available/webos
@@ -28,8 +28,9 @@ if [ "$NOVNC_AUTH" = "false" ]; then
 fi
 
 sudo service dbus start
-sudo service pulseaudio start
-sudo service kclient start
+pulseaudio --start --disallow-exit --exit-idle-time=-1
+(sleep 1 && pgrep -u "$NAME" -f "pulseaudio --start --disallow-exit --exit-idle-time=-1" | sudo tee /var/run/pulseaudio.pid > /dev/null) &
+node /usr/local/lib/kclient/index.js & pid=$! && echo "$pid" | sudo tee /var/run/kclient.pid > /dev/null
 sudo service nginx start
 
 mkdir -p $HOME/Desktop
