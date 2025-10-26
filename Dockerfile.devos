@@ -3,7 +3,8 @@ ARG BASE_IMAGE="ubuntu:24.04"
 FROM $BASE_IMAGE AS base_image
 
 ARG DEBIAN_FRONTEND noninteractive
-ARG USER=admin
+ARG NAME=admin
+ARG MAIN=/home/$NAME
 ARG UID=1100
 ARG GID=1100
 
@@ -22,10 +23,10 @@ RUN apt-get update && \
 	gnupg2
 
 # Add user
-RUN groupadd -g $GID $USER && adduser --uid $UID --gid $GID $USER --disabled-password --gecos ''
+RUN groupadd -g $GID $NAME && adduser --home $MAIN --uid $UID --gid $GID $NAME --disabled-password --gecos ''
 RUN apt-get install -y sudo && \
-	echo "$USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$USER && \
-	chmod 440 /etc/sudoers.d/$USER
+	echo "$NAME ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$NAME && \
+	chmod 440 /etc/sudoers.d/$NAME
 
 # Install SSH server
 RUN apt-get install -y \
@@ -51,7 +52,7 @@ RUN install -m 0755 -d /etc/apt/keyrings && \
 	docker-buildx-plugin \
 	docker-compose-plugin \
 	nvidia-container-runtime && \
-	usermod -aG docker $USER
+	usermod -aG docker $NAME
 RUN echo '{' > /etc/docker/daemon.json && \
 	echo '    "runtimes": {' >> /etc/docker/daemon.json && \
 	echo '        "nvidia": {' >> /etc/docker/daemon.json && \
@@ -59,7 +60,7 @@ RUN echo '{' > /etc/docker/daemon.json && \
 	echo '            "runtimeArgs": []' >> /etc/docker/daemon.json && \
 	echo '        }' >> /etc/docker/daemon.json && \
 	echo '    },' >> /etc/docker/daemon.json && \
-	echo "    \"data-root\": \"/home/$USER/.docker_data_root\"" >> /etc/docker/daemon.json && \
+	echo "    \"data-root\": \"$MAIN/.docker_data_root\"" >> /etc/docker/daemon.json && \
 	echo '}' >> /etc/docker/daemon.json
 
 # Install Visual Studio Code CLI
@@ -98,9 +99,9 @@ RUN echo '#!/bin/bash' > docker-entrypoint && \
 
 EXPOSE 22
 
-USER $USER
-WORKDIR /home/$USER
-VOLUME "/home/$USER"
+USER $NAME
+WORKDIR "$MAIN"
+VOLUME "$MAIN"
 
 CMD ["bash"]
 ENTRYPOINT ["docker-entrypoint"]

@@ -3,7 +3,8 @@ ARG BASE_IMAGE="ubuntu:24.04"
 FROM $BASE_IMAGE AS base_image
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG USER=admin
+ARG NAME=admin
+ARG MAIN=/home/$NAME
 ARG UID=1100
 ARG GID=1100
 ARG LC_ALL=C.UTF-8
@@ -25,10 +26,10 @@ RUN apt-get update && \
 	gnupg2
 
 # Add user
-RUN groupadd -g $GID $USER && adduser --uid $UID --gid $GID $USER --disabled-password --gecos ''
+RUN groupadd -g $GID $NAME && adduser --home $MAIN --uid $UID --gid $GID $NAME --disabled-password --gecos ''
 RUN apt-get install -y sudo && \
-	echo "$USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$USER && \
-	chmod 440 /etc/sudoers.d/$USER
+	echo "$NAME ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$NAME && \
+	chmod 440 /etc/sudoers.d/$NAME
 
 # Install desktop services
 RUN apt-get install -y \
@@ -48,10 +49,11 @@ RUN KASMVNC_RELEASE=$(curl -sX GET "https://api.github.com/repos/kasmtech/KasmVN
 	SYSTEM_VERSION=$(grep VERSION_CODENAME /etc/os-release | cut -d'=' -f2) && \
 	wget https://github.com/kasmtech/KasmVNC/releases/download/${KASMVNC_RELEASE}/kasmvncserver_${SYSTEM_VERSION}_${KASMVNC_RELEASE#v}_amd64.deb && \
 	apt-get install -y ./kasmvncserver_*.deb && \
-	usermod -aG ssl-cert $USER && \
+	usermod -aG ssl-cert $NAME && \
 	rm -rf kasmvncserver_*.deb
 
 # Add filebrower and sound service
+COPY /root/usr/local/lib/kclient /usr/local/lib/kclient
 COPY /root/etc/nginx /etc/nginx
 COPY /root/tmp/set-title /tmp/set-title
 RUN apt-get install -y \
@@ -59,16 +61,10 @@ RUN apt-get install -y \
 	nginx \
 	nodejs \
 	npm && \
-    KCLIENT_RELEASE=$(curl -sX GET "https://api.github.com/repos/linuxserver/kclient/releases/latest" | \
-	awk '/tag_name/{print $4;exit}' FS='[""]') && \
-	curl -o /tmp/kclient.tar.gz -L "https://github.com/linuxserver/kclient/archive/${KCLIENT_RELEASE}.tar.gz" && \
-	mkdir -p /usr/local/lib/kclient && \
-	tar xzf /tmp/kclient.tar.gz -C /usr/local/lib/kclient/ --strip-components=1 && \
 	cd /usr/local/lib/kclient && \
 	bash /tmp/set-title && \
 	npm install && \
 	rm -f package-lock.json
-COPY /root/usr/local/lib/kclient /usr/local/lib/kclient
 
 # Install SSH server
 RUN apt-get install -y \
@@ -94,9 +90,9 @@ RUN install -m 0755 -d /etc/apt/keyrings && \
 	docker-buildx-plugin \
 	docker-compose-plugin \
 	nvidia-container-runtime && \
-	usermod -aG docker $USER
+	usermod -aG docker $NAME
 COPY /root/etc/docker/daemon.json /etc/docker/daemon.json
-RUN sed -i "s/\$HOME/$(echo /home/$USER | sed 's/\//\\&/g')/" /etc/docker/daemon.json
+RUN sed -i "s#\$HOME#$MAIN#" /etc/docker/daemon.json
 
 # Install vscode and edge
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | \
@@ -153,9 +149,9 @@ RUN chmod 755 /usr/local/bin/docker-entrypoint
 
 EXPOSE 22
 
-USER $USER
-WORKDIR "/home/$USER"
-VOLUME "/home/$USER"
+USER $NAME
+WORKDIR "$MAIN"
+VOLUME "$MAIN"
 
 CMD ["bash"]
 ENTRYPOINT ["docker-entrypoint"]
