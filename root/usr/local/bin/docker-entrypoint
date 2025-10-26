@@ -14,6 +14,7 @@ rm -rf /tmp/.X*-lock /tmp/.X11-unix
 vncserver -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 :1
 
 sudo sed -i "s/EXEUSER=\"[^\"]*\"/EXEUSER=\"`whoami`\"/" /etc/init.d/kclient
+sudo sed -i "s/EXEUSER=\"[^\"]*\"/EXEUSER=\"`whoami`\"/" /etc/init.d/pulseaudio
 
 sudo ln -s /etc/nginx/sites-available/webos /etc/nginx/sites-enabled/webos
 sudo sed -i "s/\$HTTP_PORT/$NOVNC_PORT/" /etc/nginx/sites-available/webos
@@ -27,7 +28,7 @@ if [ "$NOVNC_AUTH" = "false" ]; then
 fi
 
 sudo service dbus start
-pulseaudio --start --disallow-exit --exit-idle-time=-1
+sudo service pulseaudio start
 sudo service kclient start
 sudo service nginx start
 

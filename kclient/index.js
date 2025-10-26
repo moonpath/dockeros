@@ -1,6 +1,7 @@
 // LinuxServer KasmVNC Client
 
 //// Env variables ////
+var VNC_PORT = process.env.VNC_PORT || '6900';
 var SUBFOLDER = process.env.SUBFOLDER || '/';
 var TITLE = process.env.TITLE || 'KasmVNC Client';
 var FM_HOME = process.env.FM_HOME || '/config';
@@ -190,6 +191,6 @@ aio.on('connection', function (socket) {
   socket.on('micdata', micData);
 });
 
-// Spin up application on 6900
+// Spin up application on VNC_PORT
 app.use(SUBFOLDER, baseRouter);
-http.listen(6900);
+http.listen(VNC_PORT);

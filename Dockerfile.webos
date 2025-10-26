@@ -139,9 +139,13 @@ RUN apt-get -y autoclean && \
 	/var/tmp/* \
 	/tmp/*
 
-# Set up filebrower and sound service
+# Set up filebrower service
 COPY /root/etc/init.d/kclient /etc/init.d/kclient
 RUN chmod 755 /etc/init.d/kclient
+
+# Set up pulseaudio service
+COPY /root/etc/init.d/pulseaudio /etc/init.d/pulseaudio
+RUN chmod 755 /etc/init.d/pulseaudio
 
 # Create docker init script
 COPY /root/usr/local/bin/docker-entrypoint /usr/local/bin/docker-entrypoint
