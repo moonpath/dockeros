@@ -151,6 +151,9 @@ RUN chmod 755 /etc/init.d/pulseaudio
 COPY /root/usr/local/bin/docker-entrypoint /usr/local/bin/docker-entrypoint
 RUN chmod 755 /usr/local/bin/docker-entrypoint
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+	CMD bash -c 'echo >/dev/tcp/127.0.0.1/6900 >/dev/null 2>&1'
+
 EXPOSE 22
 
 USER $NAME
