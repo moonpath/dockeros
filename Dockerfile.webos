@@ -139,6 +139,9 @@ RUN apt-get -y autoclean && \
 	/var/tmp/* \
 	/tmp/*
 
+# Set up webos default config
+COPY /root/etc/default/webos /etc/default/webos
+
 # Set up filebrower service
 COPY /root/etc/init.d/kclient /etc/init.d/kclient
 RUN chmod 755 /etc/init.d/kclient

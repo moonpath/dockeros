@@ -16,6 +16,8 @@ for session in $(vncserver -list | grep '^:' | awk '{print $1}'); do vncserver -
 rm -rf /tmp/.X*-lock /tmp/.X11-unix
 vncserver -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 :1
 
+sudo sed -i "s/^EXEUSER=.*/EXEUSER=$NAME/" /etc/default/webos
+
 sudo ln -s /etc/nginx/sites-available/webos /etc/nginx/sites-enabled/webos
 sudo sed -i "s/\$HTTP_PORT/$NOVNC_PORT/" /etc/nginx/sites-available/webos
 sudo sed -i "s/\$HTTPS_PORT/$((NOVNC_PORT+1))/" /etc/nginx/sites-available/webos
@@ -28,9 +30,8 @@ if [ "$NOVNC_AUTH" = "false" ]; then
 fi
 
 sudo service dbus start
-pulseaudio --start --disallow-exit --exit-idle-time=-1
-(sleep 1 && pgrep -u "$NAME" -f "pulseaudio --start --disallow-exit --exit-idle-time=-1" | sudo tee /var/run/pulseaudio.pid > /dev/null) &
-node /usr/local/lib/kclient/index.js & pid=$! && echo "$pid" | sudo tee /var/run/kclient.pid > /dev/null
+sudo service pulseaudio start
+sudo service kclient start
 sudo service nginx start
 
 mkdir -p $HOME/Desktop

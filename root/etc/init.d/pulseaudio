@@ -17,39 +17,16 @@ DAEMONOPTS="--start --disallow-exit --exit-idle-time=-1"
 PIDFILE="/var/run/pulseaudio.pid"
 SCRIPTNAME="/etc/init.d/$NAME"
 
-# Function to find the initiating user
-get_initiating_user() {
-  local current_pid=$$
-  local found_user=""
+if [ -f /etc/default/webos ]; then
+    set -a
+    . /etc/default/webos
+    set +a
+fi
 
-  while [ "$current_pid" -ne 1 ] && [ "$current_pid" -ne 0 ]; do
-    local ps_output
-    ps_output=$(ps -o user=,ppid= -p "$current_pid" 2>/dev/null)
-    
-    if [ -z "$ps_output" ]; then
-      break
-    fi
-    
-    local user ppid
-    user=$(echo "$ps_output" | awk '{print $1}')
-    ppid=$(echo "$ps_output" | awk '{print $2}')
-    
-    if [ "$user" != "root" ] && [ -n "$user" ]; then
-      found_user="$user"
-      break
-    fi
-    
-    current_pid=$ppid
-  done
-  
-  if [ -n "$found_user" ]; then
-    echo "$found_user"
-  else
-    echo "root"
-  fi
-}
-
-EXEUSER=$(get_initiating_user)
+# Set EXEUSER from environment variable or default to root
+if [ -z "$EXEUSER" ]; then
+    EXEUSER="root"
+fi
 
 . /lib/lsb/init-functions
 
