@@ -1,10 +1,10 @@
 // LinuxServer KasmVNC Client
 
 //// Env variables ////
-var VNC_PORT = process.env.VNC_PORT || '6900';
-var SUBFOLDER = process.env.SUBFOLDER || '/';
-var TITLE = process.env.TITLE || 'KasmVNC Client';
-var FM_HOME = process.env.FM_HOME || '/config';
+var PORT = process.env.WEBSOCKIFY_PORT || '6900';
+var SUBFOLDER = process.env.WEBSOCKIFY_SUBFOLDER || '/';
+var TITLE = process.env.TITLE || 'Webos';
+var HOME = process.env.HOME || '/root';
 var PATH;
 if (SUBFOLDER != '/') {
   PATH = '&path=' + SUBFOLDER.substring(1) + 'websockify'
@@ -61,7 +61,7 @@ io.on('connection', async function (socket) {
 
   // Open default location
   async function checkAuth(password) {
-    getFiles(FM_HOME);
+    getFiles(HOME);
   }
 
   // Emit to user
@@ -191,6 +191,6 @@ aio.on('connection', function (socket) {
   socket.on('micdata', micData);
 });
 
-// Spin up application on VNC_PORT
+// Spin up application on PORT
 app.use(SUBFOLDER, baseRouter);
-http.listen(VNC_PORT);
+http.listen(PORT);

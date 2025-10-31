@@ -43,7 +43,7 @@ RUN apt-get install -y \
 	/etc/xdg/autostart/xscreensaver.desktop
 COPY /root/etc/xdg /etc/xdg
 
-# Install kasmvncserver
+# Install KASM vnc server
 RUN KASMVNC_RELEASE=$(curl -sX GET "https://api.github.com/repos/kasmtech/KasmVNC/releases/latest" | \
 	awk '/tag_name/{print $4;exit}' FS='[""]') && \
 	SYSTEM_VERSION=$(grep VERSION_CODENAME /etc/os-release | cut -d'=' -f2) && \
@@ -52,17 +52,15 @@ RUN KASMVNC_RELEASE=$(curl -sX GET "https://api.github.com/repos/kasmtech/KasmVN
 	usermod -aG ssl-cert $NAME && \
 	rm -rf kasmvncserver_*.deb
 
-# Add filebrower and sound service
+# Install KASM client
 COPY /root/usr/local/lib/kclient /usr/local/lib/kclient
 COPY /root/etc/nginx /etc/nginx
-COPY /root/tmp/set-title /tmp/set-title
 RUN apt-get install -y \
 	libpulse-dev \
 	nginx \
 	nodejs \
 	npm && \
 	cd /usr/local/lib/kclient && \
-	bash /tmp/set-title && \
 	npm install && \
 	rm -f package-lock.json
 
@@ -94,7 +92,7 @@ RUN install -m 0755 -d /etc/apt/keyrings && \
 COPY /root/etc/docker/daemon.json /etc/docker/daemon.json
 RUN sed -i "s#\$HOME#$MAIN#" /etc/docker/daemon.json
 
-# Install vscode and edge
+# Install Vscode and Edge
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | \
 	gpg --dearmor > microsoft.gpg && \
 	install -o root -g root -m 644 microsoft.gpg /etc/apt/trusted.gpg.d/ && \
@@ -139,18 +137,18 @@ RUN apt-get -y autoclean && \
 	/var/tmp/* \
 	/tmp/*
 
-# Set up webos default config
+# Set up Webos default config
 COPY /root/etc/default/webos /etc/default/webos
 
-# Set up filebrower service
+# Set up KASM client
 COPY /root/etc/init.d/kclient /etc/init.d/kclient
 RUN chmod 755 /etc/init.d/kclient
 
-# Set up pulseaudio service
+# Set up Pulseaudio service
 COPY /root/etc/init.d/pulseaudio /etc/init.d/pulseaudio
 RUN chmod 755 /etc/init.d/pulseaudio
 
-# Create docker init script
+# Create Docker init script
 COPY /root/usr/local/bin/docker-entrypoint /usr/local/bin/docker-entrypoint
 RUN chmod 755 /usr/local/bin/docker-entrypoint
 
