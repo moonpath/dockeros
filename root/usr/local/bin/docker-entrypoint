@@ -1,9 +1,9 @@
 #!/bin/bash
 set -x
 
-NAME=$(whoami)
+NAME=$(id -un 2>/dev/null || echo root)
 
-sudo chown $NAME:$NAME $HOME
+sudo chown $(id -u):$(id -g) $HOME
 cp --update=none /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/
 
 : ${NOVNC_PORT:=7900}

@@ -52,16 +52,18 @@ RUN install -m 0755 -d /etc/apt/keyrings && \
 	docker-buildx-plugin \
 	docker-compose-plugin \
 	nvidia-container-runtime && \
-	usermod -aG docker $NAME
-RUN echo '{' > /etc/docker/daemon.json && \
-	echo '    "runtimes": {' >> /etc/docker/daemon.json && \
-	echo '        "nvidia": {' >> /etc/docker/daemon.json && \
-	echo '            "path": "nvidia-container-runtime",' >> /etc/docker/daemon.json && \
-	echo '            "runtimeArgs": []' >> /etc/docker/daemon.json && \
-	echo '        }' >> /etc/docker/daemon.json && \
-	echo '    },' >> /etc/docker/daemon.json && \
-	echo "    \"data-root\": \"$MAIN/.docker_data_root\"" >> /etc/docker/daemon.json && \
-	echo '}' >> /etc/docker/daemon.json
+	usermod -aG docker $NAME && \
+    cat <<EOF > /etc/docker/daemon.json
+{
+    "runtimes": {
+        "nvidia": {
+            "path": "nvidia-container-runtime",
+            "runtimeArgs": []
+        }
+    },
+    "data-root": "$MAIN/.docker_data_root"
+}
+EOF
 
 # Install Visual Studio Code CLI
 RUN curl -Lk 'https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64' --output vscode_cli.tar.gz && \
@@ -84,18 +86,23 @@ RUN apt-get -y autoclean && \
 	/tmp/*
 
 # Create docker init script
-RUN echo '#!/bin/bash' > docker-entrypoint && \ 
-	echo 'set -x' >> docker-entrypoint && \
-	echo 'sudo chown `whoami`:`whoami` $HOME' >> docker-entrypoint && \
-	echo 'sudo service ssh start' >> docker-entrypoint && \
-	echo 'cp -n /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/' >> docker-entrypoint && \
-	echo 'if [ -f ~/.startup ]; then' >> docker-entrypoint && \
-	echo '    . ~/.startup' >> docker-entrypoint && \
-	echo 'fi' >> docker-entrypoint && \
-	echo 'set -ex' >> docker-entrypoint && \
-	echo 'exec "$@"' >> docker-entrypoint && \
-	chmod 755 docker-entrypoint && \
-	mv docker-entrypoint /usr/local/bin/
+RUN cat <<'EOF' > /usr/local/bin/docker-entrypoint && chmod 755 /usr/local/bin/docker-entrypoint
+#!/bin/bash
+set -x
+
+sudo chown $(id -u):$(id -g) $HOME
+
+sudo service ssh start
+
+cp -n /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/
+
+if [ -f ~/.startup ]; then
+    . ~/.startup
+fi
+
+set -ex
+exec "$@"
+EOF
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 	CMD bash -c 'echo >/dev/tcp/127.0.0.1/22 >/dev/null 2>&1'
