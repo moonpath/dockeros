@@ -1,22 +1,27 @@
 #!/bin/bash
 set -x
 
-NAME=$(id -un 2>/dev/null || echo root)
-
-sudo chown $(id -u):$(id -g) $HOME
-cp --update=none /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/
-
 : ${NOVNC_PORT:=7900}
 : ${NOVNC_USER:=user}
 : ${NOVNC_PASSWORD:=password}
 : ${NOVNC_AUTH:=false}
+
+sudo chown $(id -u):$(id -g) $HOME
+
+if [ -d "$HOME" ] && [ -z "$(ls $HOME)" ]; then
+    cp --update=none /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/
+    install -m 755 -d $HOME/Desktop
+    install -m 755 /usr/share/applications/code.desktop $HOME/Desktop/
+    install -m 755 /usr/share/applications/microsoft-edge.desktop $HOME/Desktop/
+    install -m 755 /usr/local/share/JetBrains/Toolbox/jetbrains-toolbox.desktop $HOME/Desktop/
+fi
 
 echo -e "$NOVNC_PASSWORD\n$NOVNC_PASSWORD\n" | vncpasswd -u $NOVNC_USER -o -w -r
 for session in $(vncserver -list | grep '^:' | awk '{print $1}'); do vncserver -kill "$session"; done
 rm -rf /tmp/.X*-lock /tmp/.X11-unix
 vncserver -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 :1
 
-sudo sed -i "s/^EXEUSER=.*/EXEUSER=$NAME/" /etc/default/webos
+sudo sed -i "s/^EXEUSER=.*/EXEUSER=$(id -un 2>/dev/null || echo root)/" /etc/default/webos
 
 sudo ln -s /etc/nginx/sites-available/webos /etc/nginx/sites-enabled/webos
 sudo sed -i "s/\$HTTP_PORT/$NOVNC_PORT/" /etc/nginx/sites-available/webos
@@ -33,17 +38,6 @@ sudo service dbus start
 sudo service pulseaudio start
 sudo service kclient start
 sudo service nginx start
-
-mkdir -p $HOME/Desktop
-
-cp --update=none /usr/share/applications/code.desktop $HOME/Desktop/code.desktop
-chmod 755 $HOME/Desktop/code.desktop
-
-cp --update=none /usr/share/applications/microsoft-edge.desktop $HOME/Desktop/microsoft-edge.desktop
-chmod 755 $HOME/Desktop/microsoft-edge.desktop
-
-cp --update=none /usr/local/share/JetBrains/Toolbox/jetbrains-toolbox.desktop $HOME/Desktop/
-chmod 755 $HOME/Desktop/jetbrains-toolbox.desktop
 
 if [ -f ~/.startup ]; then
     . ~/.startup
