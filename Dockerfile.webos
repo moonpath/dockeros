@@ -20,7 +20,6 @@ ENV TZ=$TZ
 RUN apt-get update && \
 	apt-get install -y \
 	curl \
-	wget \
 	git \
 	ca-certificates \
 	gnupg2
@@ -47,10 +46,10 @@ COPY /root/etc/xdg /etc/xdg
 RUN KASMVNC_RELEASE=$(curl -sX GET "https://api.github.com/repos/kasmtech/KasmVNC/releases/latest" | \
 	awk '/tag_name/{print $4;exit}' FS='[""]') && \
 	SYSTEM_VERSION=$(grep VERSION_CODENAME /etc/os-release | cut -d'=' -f2) && \
-	wget https://github.com/kasmtech/KasmVNC/releases/download/${KASMVNC_RELEASE}/kasmvncserver_${SYSTEM_VERSION}_${KASMVNC_RELEASE#v}_amd64.deb && \
-	apt-get install -y ./kasmvncserver_*.deb && \
+	curl -fsSLo kasmvncserver_amd64.deb https://github.com/kasmtech/KasmVNC/releases/download/${KASMVNC_RELEASE}/kasmvncserver_${SYSTEM_VERSION}_${KASMVNC_RELEASE#v}_amd64.deb && \
+	apt-get install -y ./kasmvncserver_amd64.deb && \
 	usermod -aG ssl-cert $NAME && \
-	rm -rf kasmvncserver_*.deb
+	rm -rf kasmvncserver_amd64.deb
 
 # Install KASM client
 COPY /root/usr/local/lib/kclient /usr/local/lib/kclient
@@ -77,7 +76,7 @@ RUN install -m 0755 -d /etc/apt/keyrings && \
 	tee /etc/apt/sources.list.d/docker.list > /dev/null && \
 	curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
 	gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg && \
-	curl -sL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+	curl -fsSL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
     sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
     tee /etc/apt/sources.list.d/nvidia-container-toolkit.list && \
 	apt-get update && \
@@ -114,7 +113,7 @@ RUN apt-get install -y \
 	libgtk-3-bin && \
 	ARCHIVE_URL=$(curl -s 'https://data.services.jetbrains.com/products/releases?code=TBA&latest=true&type=release' | grep -Po '"linux":.*?[^\\]",' | awk -F ':' '{print $3,":"$4}'| sed 's/[", ]//g') && \
 	ARCHIVE_FILENAME=$(basename "$ARCHIVE_URL") && \
-	wget -q --show-progress -cO "/tmp/$ARCHIVE_FILENAME" "$ARCHIVE_URL" && \
+	curl -fsSLo "/tmp/$ARCHIVE_FILENAME" "$ARCHIVE_URL" && \
 	mkdir -p /usr/local/share/JetBrains/Toolbox && \
 	tar -xzf "/tmp/$ARCHIVE_FILENAME" -C /usr/local/share/JetBrains/Toolbox --strip-components=1 && \
 	chmod +x /usr/local/share/JetBrains/Toolbox/bin/jetbrains-toolbox && \
