@@ -1,0 +1,103 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          vncserver
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start VNC server at boot time
+# Description:       Enable VNC server with XFCE desktop.
+### END INIT INFO
+
+PATH="/bin:/usr/bin:/sbin:/usr/sbin"
+DESC="VNC server"
+NAME="vncserver"
+DAEMON="/usr/bin/vncserver"
+VNC_OPTS="-select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901"
+SCRIPTNAME="/etc/init.d/$NAME"
+DISPLAY=":1"
+EXEUSER="root"
+
+if [ -f /etc/default/webos ]; then
+    set -a
+    . /etc/default/webos
+    set +a
+fi
+
+. /lib/lsb/init-functions
+
+# Get user's home directory
+USER_HOME=$(eval echo ~$EXEUSER)
+
+case "$1" in
+    start)
+        log_daemon_msg "Starting service" "$NAME"
+        
+        # Check if .kasmpasswd exists
+        if [ ! -f "$USER_HOME/.kasmpasswd" ]; then
+            log_end_msg 1
+            echo "Error: $USER_HOME/.kasmpasswd not found"
+            echo "Please create VNC password first using: vncpasswd -u <username> -o -w -r"
+            exit 1
+        fi
+        
+        # Check if already running based on process query
+        if su - $EXEUSER -c "$DAEMON -list" 2>/dev/null | grep -q "^$DISPLAY"; then
+            log_end_msg 0
+            exit 0
+        fi
+        # Clean up any stale locks
+        rm -rf /tmp/.X*-lock /tmp/.X11-unix 2>/dev/null
+        # Start the VNC server as the specified user
+        su - $EXEUSER -c "$DAEMON $VNC_OPTS $DISPLAY" >/dev/null 2>&1
+        # Wait a moment for the server to start
+        sleep 1
+        # Verify the server started successfully
+        if su - $EXEUSER -c "$DAEMON -list" 2>/dev/null | grep -q "^$DISPLAY"; then
+            log_end_msg 0
+        else
+            log_end_msg 1
+        fi
+        ;;
+    stop)
+        log_daemon_msg "Stopping service" "$NAME"
+        # Kill all VNC sessions for the user
+        for session in $(su - $EXEUSER -c "$DAEMON -list" 2>/dev/null | grep '^:' | awk '{print $1}'); do
+            su - $EXEUSER -c "$DAEMON -kill $session" >/dev/null 2>&1
+        done
+        # Clean up locks
+        rm -rf /tmp/.X*-lock /tmp/.X11-unix 2>/dev/null
+        # Wait a moment
+        sleep 1
+        # Verify stopped
+        if su - $EXEUSER -c "$DAEMON -list" 2>/dev/null | grep -q "^$DISPLAY"; then
+            log_end_msg 1
+        else
+            log_end_msg 0
+        fi
+        ;;
+    restart)
+        log_daemon_msg "Restarting service" "$NAME"
+        $0 stop
+        sleep 1
+        $0 start
+        ;;
+    status)
+        # Check status based on vncserver -list
+        if su - $EXEUSER -c "$DAEMON -list" 2>/dev/null | grep -q "^$DISPLAY"; then
+            PID=$(su - $EXEUSER -c "$DAEMON -list" 2>/dev/null | grep "^$DISPLAY" | awk '{print $2}')
+            log_daemon_msg "$NAME is running on display $DISPLAY (PID: $PID)"
+            log_end_msg 0
+            exit 0
+        else
+            log_daemon_msg "$NAME is not running"
+            log_end_msg 3
+            exit 3
+        fi
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|status|restart}"
+        exit 1
+        ;;
+esac
+exit 0

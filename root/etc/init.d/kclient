@@ -14,8 +14,8 @@ DESC="kclient service"
 NAME="kclient"
 DAEMON="/usr/bin/node"
 DAEMONOPTS="/usr/local/lib/kclient/index.js"
-PIDFILE="/var/run/kclient.pid"
 SCRIPTNAME="/etc/init.d/$NAME"
+EXEUSER="root"
 
 if [ -f /etc/default/webos ]; then
     set -a
@@ -23,38 +23,59 @@ if [ -f /etc/default/webos ]; then
     set +a
 fi
 
-# Set EXEUSER from environment variable or default to root
-if [ -z "$EXEUSER" ]; then
-    EXEUSER="root"
-fi
-
 . /lib/lsb/init-functions
 
 case "$1" in
     start)
         log_daemon_msg "Starting service" "$NAME"
-        start-stop-daemon --start --background --pidfile $PIDFILE --make-pidfile --user $EXEUSER --chuid $EXEUSER --exec $DAEMON -- $DAEMONOPTS
-        log_end_msg $?
+        # Check if already running based on process query
+        if pgrep -u $EXEUSER -xf "$DAEMON $DAEMONOPTS" > /dev/null 2>&1; then
+            log_end_msg 0
+            exit 0
+        fi
+        # Start the daemon without --exec to avoid conflicts with other node processes
+        su -s /bin/sh -c "$DAEMON $DAEMONOPTS &" $EXEUSER
+        # Wait a moment for the process to start
+        sleep 1
+        # Verify the process started successfully
+        if pgrep -u $EXEUSER -xf "$DAEMON $DAEMONOPTS" > /dev/null 2>&1; then
+            log_end_msg 0
+        else
+            log_end_msg 1
+        fi
         ;;
     stop)
         log_daemon_msg "Stopping service" "$NAME"
-        start-stop-daemon --stop --quiet --oknodo --retry 30 --pidfile $PIDFILE
-        pkill -xf "$DAEMON $DAEMONOPTS" || true
-        RETVAL="$?"
-        log_end_msg $RETVAL
-        rm -f "$PIDFILE"
-        if [ $RETVAL != 0 ]; then
-            exit 1
+        # Kill the process based on process query
+        if pgrep -u $EXEUSER -xf "$DAEMON $DAEMONOPTS" > /dev/null 2>&1; then
+            pkill -u $EXEUSER -xf "$DAEMON $DAEMONOPTS" 2>/dev/null
+            # Wait for the process to terminate
+            sleep 1
+            # Force kill if still running
+            if pgrep -u $EXEUSER -xf "$DAEMON $DAEMONOPTS" > /dev/null 2>&1; then
+                pkill -9 -u $EXEUSER -xf "$DAEMON $DAEMONOPTS" 2>/dev/null || true
+            fi
         fi
-        rm -f "$PIDFILE"
+        log_end_msg 0
         ;;
     restart)
         log_daemon_msg "Restarting service" "$NAME"
         $0 stop
+        sleep 1
         $0 start
         ;;
     status)
-        status_of_proc -p "$PIDFILE" "$DAEMON" "$NAME" && exit 0 || exit $?
+        # Check status based on process query only
+        PID=$(pgrep -u $EXEUSER -xf "$DAEMON $DAEMONOPTS" 2>/dev/null)
+        if [ -n "$PID" ]; then
+            log_daemon_msg "$NAME is running (PID: $PID)"
+            log_end_msg 0
+            exit 0
+        else
+            log_daemon_msg "$NAME is not running"
+            log_end_msg 3
+            exit 3
+        fi
         ;;
     *)
         echo "Usage: $0 {start|stop|status|restart}"

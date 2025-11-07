@@ -14,8 +14,8 @@ DESC="PulseAudio sound server"
 NAME="pulseaudio"
 DAEMON="/usr/bin/pulseaudio"
 DAEMONOPTS="--start --disallow-exit --exit-idle-time=-1"
-PIDFILE="/var/run/pulseaudio.pid"
 SCRIPTNAME="/etc/init.d/$NAME"
+EXEUSER="root"
 
 if [ -f /etc/default/webos ]; then
     set -a
@@ -23,18 +23,13 @@ if [ -f /etc/default/webos ]; then
     set +a
 fi
 
-# Set EXEUSER from environment variable or default to root
-if [ -z "$EXEUSER" ]; then
-    EXEUSER="root"
-fi
-
 . /lib/lsb/init-functions
 
 case "$1" in
     start)
         log_daemon_msg "Starting service" "$NAME"
-        # Check if already running
-        if [ -f "$PIDFILE" ] && kill -0 $(cat "$PIDFILE") 2>/dev/null; then
+        # Check if already running based on process query
+        if pgrep -u $EXEUSER -xf "$DAEMON $DAEMONOPTS" > /dev/null 2>&1; then
             log_end_msg 0
             exit 0
         fi
@@ -42,9 +37,8 @@ case "$1" in
         start-stop-daemon --start --background --user $EXEUSER --chuid $EXEUSER --exec $DAEMON -- $DAEMONOPTS
         # Wait a moment for the process to start
         sleep 1
-        # Find the actual pulseaudio process PID and write it to pidfile
-        pgrep -u $EXEUSER -xf "$DAEMON $DAEMONOPTS" > $PIDFILE 2>/dev/null
-        if [ -s "$PIDFILE" ]; then
+        # Verify the process started successfully
+        if pgrep -u $EXEUSER -xf "$DAEMON $DAEMONOPTS" > /dev/null 2>&1; then
             log_end_msg 0
         else
             log_end_msg 1
@@ -52,12 +46,16 @@ case "$1" in
         ;;
     stop)
         log_daemon_msg "Stopping service" "$NAME"
-        if [ -f "$PIDFILE" ]; then
-            start-stop-daemon --stop --quiet --oknodo --retry 30 --pidfile $PIDFILE
+        # Kill the process based on process query
+        if pgrep -u $EXEUSER -xf "$DAEMON $DAEMONOPTS" > /dev/null 2>&1; then
+            pkill -u $EXEUSER -xf "$DAEMON $DAEMONOPTS" 2>/dev/null
+            # Wait for the process to terminate
+            sleep 1
+            # Force kill if still running
+            if pgrep -u $EXEUSER -xf "$DAEMON $DAEMONOPTS" > /dev/null 2>&1; then
+                pkill -9 -u $EXEUSER -xf "$DAEMON $DAEMONOPTS" 2>/dev/null || true
+            fi
         fi
-        # Ensure cleanup with pkill as backup
-        pkill -u $EXEUSER -xf "$DAEMON $DAEMONOPTS" 2>/dev/null || true
-        rm -f "$PIDFILE"
         log_end_msg 0
         ;;
     restart)
@@ -67,24 +65,16 @@ case "$1" in
         $0 start
         ;;
     status)
-        if [ -f "$PIDFILE" ]; then
-            PID=$(cat "$PIDFILE")
-            if kill -0 "$PID" 2>/dev/null; then
-                echo "$NAME is running (PID: $PID)"
-                exit 0
-            else
-                echo "$NAME is not running but PID file exists"
-                exit 1
-            fi
+        # Check status based on process query only
+        PID=$(pgrep -u $EXEUSER -xf "$DAEMON $DAEMONOPTS" 2>/dev/null)
+        if [ -n "$PID" ]; then
+            log_daemon_msg "$NAME is running (PID: $PID)"
+            log_end_msg 0
+            exit 0
         else
-            # Check if process is running without PID file
-            if pgrep -u $EXEUSER -xf "$DAEMON $DAEMONOPTS" > /dev/null 2>&1; then
-                echo "$NAME is running but PID file is missing"
-                exit 0
-            else
-                echo "$NAME is not running"
-                exit 3
-            fi
+            log_daemon_msg "$NAME is not running"
+            log_end_msg 3
+            exit 3
         fi
         ;;
     *)
