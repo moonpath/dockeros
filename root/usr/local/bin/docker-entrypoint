@@ -7,6 +7,7 @@ set -x
 : ${NOVNC_AUTH:=false}
 
 sudo chown $(id -u):$(id -g) $HOME
+sudo sed -i "s/^EXEUSER=.*/EXEUSER=$(id -un 2>/dev/null || echo root)/" /etc/default/webos
 
 if [ -d "$HOME" ] && [ -z "$(ls $HOME)" ]; then
     cp --update=none /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/
@@ -16,23 +17,25 @@ if [ -d "$HOME" ] && [ -z "$(ls $HOME)" ]; then
     install -m 755 /usr/local/share/JetBrains/Toolbox/jetbrains-toolbox.desktop $HOME/Desktop/
 fi
 
-echo -e "$NOVNC_PASSWORD\n$NOVNC_PASSWORD\n" | vncpasswd -u $NOVNC_USER -o -w -r
+if [ ! -f /etc/nginx/sites-enabled/webos ]; then
+    echo -e "$NOVNC_PASSWORD\n$NOVNC_PASSWORD\n" | vncpasswd -u $NOVNC_USER -o -w -r
+
+    if [ "$NOVNC_AUTH" = "false" ]; then
+        sudo sed -i 's/auth_basic/#auth_basic/g' /etc/nginx/sites-available/webos
+        sudo sed -i 's/auth_basic_user_file/#auth_basic_user_file/g' /etc/nginx/sites-available/webos
+    fi
+    printf "${NOVNC_USER}:$(openssl passwd -apr1 ${NOVNC_PASSWORD})\n" | sudo tee /etc/nginx/.htpasswd >>/dev/null
+    sudo sed -i "s/\$HTTP_BASIC_AUTH/$(echo -n "${NOVNC_USER}:${NOVNC_PASSWORD}" | base64)/" /etc/nginx/sites-available/webos
+
+    sudo sed -i "s/\$HTTP_PORT/$NOVNC_PORT/" /etc/nginx/sites-available/webos
+    sudo sed -i "s/\$HTTPS_PORT/$((NOVNC_PORT+1))/" /etc/nginx/sites-available/webos
+
+    sudo ln -s /etc/nginx/sites-available/webos /etc/nginx/sites-enabled/webos
+fi
+
 for session in $(vncserver -list | grep '^:' | awk '{print $1}'); do vncserver -kill "$session"; done
 rm -rf /tmp/.X*-lock /tmp/.X11-unix
 vncserver -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 :1
-
-sudo sed -i "s/^EXEUSER=.*/EXEUSER=$(id -un 2>/dev/null || echo root)/" /etc/default/webos
-
-sudo ln -s /etc/nginx/sites-available/webos /etc/nginx/sites-enabled/webos
-sudo sed -i "s/\$HTTP_PORT/$NOVNC_PORT/" /etc/nginx/sites-available/webos
-sudo sed -i "s/\$HTTPS_PORT/$((NOVNC_PORT+1))/" /etc/nginx/sites-available/webos
-sudo sed -i "s/\$HTTP_BASIC_AUTH/$(echo -n "${NOVNC_USER}:${NOVNC_PASSWORD}" | base64)/" /etc/nginx/sites-available/webos
-printf "${NOVNC_USER}:$(openssl passwd -apr1 ${NOVNC_PASSWORD})\n" | sudo tee /etc/nginx/.htpasswd >>/dev/null
-
-if [ "$NOVNC_AUTH" = "false" ]; then
-    sudo sed -i 's/auth_basic/#auth_basic/g' /etc/nginx/sites-available/webos
-    sudo sed -i 's/auth_basic_user_file/#auth_basic_user_file/g' /etc/nginx/sites-available/webos
-fi
 
 sudo service dbus start
 sudo service pulseaudio start
