@@ -19,16 +19,16 @@ ENV TZ=$TZ
 # Install build tools
 RUN apt-get update && \
 	apt-get install -y \
-	curl \
-	git \
 	ca-certificates \
-	gnupg2
+	gnupg2 \
+	curl \
+	git
 
 # Add user
-RUN groupadd -g $GID $NAME && adduser --home $MAIN --uid $UID --gid $GID $NAME --disabled-password --gecos ''
+RUN id $UID >/dev/null 2>&1 || (groupadd -f -g $GID $NAME && adduser --uid $UID --gid $GID $NAME --disabled-password --gecos '')
 RUN apt-get install -y sudo && \
-	echo "$NAME ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$NAME && \
-	chmod 440 /etc/sudoers.d/$NAME
+	echo "$(id -un $UID) ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$(id -un $UID) && \
+	chmod 440 /etc/sudoers.d/$(id -un $UID)
 
 # Install desktop services
 RUN apt-get install -y \
@@ -43,12 +43,12 @@ RUN apt-get install -y \
 COPY /root/etc/xdg /etc/xdg
 
 # Install KASM vnc server
-RUN KASMVNC_RELEASE=$(curl -sX GET "https://api.github.com/repos/kasmtech/KasmVNC/releases/latest" | \
+RUN KASMVNC_RELEASE=$(curl -fsSLX GET "https://api.github.com/repos/kasmtech/KasmVNC/releases/latest" | \
 	awk '/tag_name/{print $4;exit}' FS='[""]') && \
 	SYSTEM_VERSION=$(grep VERSION_CODENAME /etc/os-release | cut -d'=' -f2) && \
 	curl -fsSLo kasmvncserver_amd64.deb https://github.com/kasmtech/KasmVNC/releases/download/${KASMVNC_RELEASE}/kasmvncserver_${SYSTEM_VERSION}_${KASMVNC_RELEASE#v}_amd64.deb && \
 	apt-get install -y ./kasmvncserver_amd64.deb && \
-	usermod -aG ssl-cert $NAME && \
+	usermod -aG ssl-cert $(id -un $UID) && \
 	rm -rf kasmvncserver_amd64.deb
 
 # Install KASM client
@@ -87,12 +87,12 @@ RUN install -m 0755 -d /etc/apt/keyrings && \
 	docker-buildx-plugin \
 	docker-compose-plugin \
 	nvidia-container-runtime && \
-	usermod -aG docker $NAME
+	usermod -aG docker $(id -un $UID)
 COPY /root/etc/docker/daemon.json /etc/docker/daemon.json
-RUN sed -i "s#\$HOME#$MAIN#" /etc/docker/daemon.json
+RUN sed -i -E "s#([[:space:]]*\"data-root\"[[:space:]]*:)[[:space:]]*\".*\"([[:space:]]*,?)#\1 \"$MAIN/.docker_data_root\"\2#" /etc/docker/daemon.json
 
 # Install Vscode and Edge
-RUN curl https://packages.microsoft.com/keys/microsoft.asc | \
+RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | \
 	gpg --dearmor > microsoft.gpg && \
 	install -o root -g root -m 644 microsoft.gpg /etc/apt/trusted.gpg.d/ && \
 	sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" > /etc/apt/sources.list.d/microsoft-vscode.list' && \
@@ -111,7 +111,7 @@ RUN apt-get install -y \
 	mesa-utils \
 	libfontconfig \
 	libgtk-3-bin && \
-	ARCHIVE_URL=$(curl -s 'https://data.services.jetbrains.com/products/releases?code=TBA&latest=true&type=release' | grep -Po '"linux":.*?[^\\]",' | awk -F ':' '{print $3,":"$4}'| sed 's/[", ]//g') && \
+	ARCHIVE_URL=$(curl -fsSL 'https://data.services.jetbrains.com/products/releases?code=TBA&latest=true&type=release' | grep -Po '"linux":.*?[^\\]",' | awk -F ':' '{print $3,":"$4}'| sed 's/[", ]//g') && \
 	ARCHIVE_FILENAME=$(basename "$ARCHIVE_URL") && \
 	curl -fsSLo "/tmp/$ARCHIVE_FILENAME" "$ARCHIVE_URL" && \
 	mkdir -p /usr/local/share/JetBrains/Toolbox && \
@@ -151,10 +151,10 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 	CMD bash -c 'echo >/dev/tcp/127.0.0.1/6900 >/dev/null 2>&1'
 
 EXPOSE 22
-
-USER $NAME
-WORKDIR "$MAIN"
 VOLUME "$MAIN"
+
+USER $UID
+WORKDIR "$MAIN"
 
 CMD ["bash"]
 ENTRYPOINT ["docker-entrypoint"]
