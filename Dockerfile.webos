@@ -25,7 +25,7 @@ RUN apt-get update && \
 	git
 
 # Add user
-RUN id $UID >/dev/null 2>&1 || (groupadd -f -g $GID $NAME && adduser --uid $UID --gid $GID $NAME --disabled-password --gecos '')
+RUN id $UID >/dev/null 2>&1 || (groupadd -fg $GID $NAME && adduser --uid $UID --gid $GID $NAME --disabled-password --gecos '')
 RUN apt-get install -y sudo && \
 	echo "$(id -un $UID) ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$(id -un $UID) && \
 	chmod 440 /etc/sudoers.d/$(id -un $UID)

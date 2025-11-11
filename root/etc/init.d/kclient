@@ -1,12 +1,12 @@
 #!/bin/sh
 ### BEGIN INIT INFO
-# Provides:          myservice
+# Provides:          kclient
 # Required-Start:    $remote_fs $syslog
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Start myservice at boot time
-# Description:       Enable service provided by daemon myservice.
+# Short-Description: Enable service
+# Description:       Enable service by init script.
 ### END INIT INFO
 
 PATH="/bin:/usr/bin:/sbin:/usr/sbin"

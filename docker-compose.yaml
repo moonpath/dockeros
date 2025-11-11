@@ -8,7 +8,7 @@ networks:
 
 services:
   webos:
-    image: moonpath/webos:test
+    image: moonpath/webos:ubuntu-24.04
     container_name: webos
     hostname: linux
     shm_size: 16g
@@ -30,7 +30,7 @@ services:
       LANG: ${LANG:-C.UTF-8}
       TZ: ${TZ:-Etc/UTC}
     ports:
-      - "8900:7900/tcp"  
+      - "8900:7900/tcp"
     extra_hosts:
       - host.docker.internal:host-gateway
     deploy:
