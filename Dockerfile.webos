@@ -40,7 +40,7 @@ RUN apt-get install -y \
 	light-locker-settings && \
 	rm -f /etc/xdg/autostart/light-locker.desktop \
 	/etc/xdg/autostart/xscreensaver.desktop
-COPY /root/etc/xdg /etc/xdg
+COPY /rootfs/etc/xdg /etc/xdg
 
 # Install KASM vnc server
 RUN KASMVNC_RELEASE=$(curl -fsSLX GET "https://api.github.com/repos/kasmtech/KasmVNC/releases/latest" | \
@@ -52,8 +52,8 @@ RUN KASMVNC_RELEASE=$(curl -fsSLX GET "https://api.github.com/repos/kasmtech/Kas
 	rm -rf kasmvncserver_amd64.deb
 
 # Install KASM client
-COPY /root/usr/local/lib/kclient /usr/local/lib/kclient
-COPY /root/etc/nginx /etc/nginx
+COPY /rootfs/usr/local/lib/kclient /usr/local/lib/kclient
+COPY /rootfs/etc/nginx /etc/nginx
 RUN apt-get install -y \
 	libpulse-dev \
 	nginx \
@@ -88,7 +88,7 @@ RUN install -m 0755 -d /etc/apt/keyrings && \
 	docker-compose-plugin \
 	nvidia-container-runtime && \
 	usermod -aG docker $(id -un $UID)
-COPY /root/etc/docker/daemon.json /etc/docker/daemon.json
+COPY /rootfs/etc/docker/daemon.json /etc/docker/daemon.json
 RUN sed -i -E "s#([[:space:]]*\"data-root\"[[:space:]]*:)[[:space:]]*\".*\"([[:space:]]*,?)#\1 \"$MAIN/.docker_data_root\"\2#" /etc/docker/daemon.json
 
 # Install Vscode and Edge
@@ -118,7 +118,7 @@ RUN apt-get install -y \
 	tar -xzf "/tmp/$ARCHIVE_FILENAME" -C /usr/local/share/JetBrains/Toolbox --strip-components=1 && \
 	chmod +x /usr/local/share/JetBrains/Toolbox/bin/jetbrains-toolbox && \
 	ln -s /usr/local/share/JetBrains/Toolbox/bin/jetbrains-toolbox /usr/local/bin/jetbrains-toolbox
-COPY /root/usr/local/share/JetBrains /usr/local/share/JetBrains
+COPY /rootfs/usr/local/share/JetBrains /usr/local/share/JetBrains
 
 # Install essential tools
 RUN apt-get install -y \
@@ -137,15 +137,15 @@ RUN apt-get -y autoclean && \
 	/tmp/*
 
 # Set up Webos default config
-COPY /root/etc/default/webos /etc/default/webos
+COPY /rootfs/etc/default/webos /etc/default/webos
 
 # Add init scripts
-ADD --chmod=755 /root/etc/init.d/vncserver /etc/init.d/vncserver
-ADD --chmod=755 /root/etc/init.d/pulseaudio /etc/init.d/pulseaudio
-ADD --chmod=755 /root/etc/init.d/kclient /etc/init.d/kclient
+ADD --chmod=755 /rootfs/etc/init.d/vncserver /etc/init.d/vncserver
+ADD --chmod=755 /rootfs/etc/init.d/pulseaudio /etc/init.d/pulseaudio
+ADD --chmod=755 /rootfs/etc/init.d/kclient /etc/init.d/kclient
 
 # Add Docker entrypoint script
-ADD --chmod=755 /root/usr/local/bin/docker-entrypoint /usr/local/bin/docker-entrypoint
+ADD --chmod=755 /rootfs/usr/local/bin/docker-entrypoint /usr/local/bin/docker-entrypoint
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 	CMD bash -c 'echo >/dev/tcp/127.0.0.1/6900 >/dev/null 2>&1'

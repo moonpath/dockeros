@@ -4,14 +4,14 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 10.20.40.0/24
+        - subnet: 10.10.0.0/24
 
 services:
   webos:
     image: moonpath/webos:ubuntu-24.04
     container_name: webos
-    hostname: linux
-    shm_size: 16g
+    hostname: webos
+    shm_size: 2g
     privileged: true
     restart: unless-stopped
     stdin_open: true
@@ -30,10 +30,6 @@ services:
       LANG: ${LANG:-C.UTF-8}
       TZ: ${TZ:-Etc/UTC}
     ports:
-      - "8900:7900/tcp"
+      - "7900:7900/tcp"
     extra_hosts:
       - host.docker.internal:host-gateway
-    deploy:
-      resources:
-        limits:
-          memory: 8g
