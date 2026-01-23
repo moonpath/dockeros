@@ -30,6 +30,7 @@ services:
       NOVNC_USER: ${NOVNC_USER:-user}
       NOVNC_PASSWORD: ${NOVNC_PASSWORD:-password}
       NOVNC_AUTH: ${NOVNC_AUTH:-false}
+      NOVNC_SUBFOLDER: ${NOVNC_SUBFOLDER:-/}
       LC_ALL: ${LANG:-C.UTF-8}
       LANG: ${LANG:-C.UTF-8}
       TZ: ${TZ:-Etc/UTC}
