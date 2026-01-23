@@ -1,14 +1,16 @@
 networks:
   default:
-    name: webos
+    name: dockeros
     driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-dockeros
     ipam:
       config:
         - subnet: 10.10.0.0/24
 
 services:
   webos:
-    image: moonpath/webos:ubuntu-24.04
+    image: moonpath/webos:latest
     container_name: webos
     hostname: webos
     shm_size: 2g
@@ -20,7 +22,9 @@ services:
       context: .
       dockerfile: Dockerfile.webos
       args:
-        BASE_IMAGE: "ubuntu:24.04"
+        BASE_IMAGE: ubuntu:latest
+      tags:
+        - moonpath/webos:latest
     environment:
       NOVNC_PORT: ${NOVNC_PORT:-7900}
       NOVNC_USER: ${NOVNC_USER:-user}
@@ -31,5 +35,30 @@ services:
       TZ: ${TZ:-Etc/UTC}
     ports:
       - "7900:7900/tcp"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+
+  devos:
+    image: moonpath/devos:latest
+    container_name: devos
+    hostname: devos
+    shm_size: 1g
+    privileged: true
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    build:
+      context: .
+      dockerfile: Dockerfile.devos
+      args:
+        BASE_IMAGE: ubuntu:latest
+      tags:
+        - moonpath/devos:latest
+    environment:
+      LC_ALL: ${LANG:-C.UTF-8}
+      LANG: ${LANG:-C.UTF-8}
+      TZ: ${TZ:-Etc/UTC}
+    ports:
+      - "2222:22/tcp"  
     extra_hosts:
       - host.docker.internal:host-gateway

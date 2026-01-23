@@ -22,10 +22,19 @@ RUN apt-get update && \
 	git
 
 # Add user
-RUN id $UID >/dev/null 2>&1 || (groupadd -fg $GID $NAME && adduser --uid $UID --gid $GID $NAME --disabled-password --gecos '')
+RUN set -e; \
+    EXISTING_USER=$(id -nu $UID 2>/dev/null || true); \
+    EXISTING_GID=$(id -g $UID 2>/dev/null || true); \
+    if [ -n "$EXISTING_USER" ] && ([ "$EXISTING_USER" != "$NAME" ] || [ "$EXISTING_GID" != "$GID" ]); then \
+        userdel -rf "$EXISTING_USER"; \
+    fi; \
+    getent group $GID >/dev/null 2>&1 || groupadd -g $GID "$NAME"; \
+    id $UID >/dev/null 2>&1 || useradd -u $UID -g $GID -m -d "$MAIN" -s /bin/bash "$NAME";
+
+# Install sudo and configure passwordless sudo for the user
 RUN apt-get install -y sudo && \
 	echo "$(id -un $UID) ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$(id -un $UID) && \
-	chmod 440 /etc/sudoers.d/$(id -un $UID)
+	chmod 440 "/etc/sudoers.d/$(id -un $UID)"
 
 # Install SSH server
 RUN apt-get install -y \
@@ -94,11 +103,11 @@ RUN cat <<'EOF' > /usr/local/bin/docker-entrypoint && chmod 755 /usr/local/bin/d
 #!/bin/bash
 set -x
 
-sudo chown $(id -u):$(id -g) $HOME
+sudo chown $(id -u):$(id -g) "$HOME"
 
 sudo service ssh start
 
-cp -n /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/
+cp -n /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout "$HOME/"
 
 if [ -f ~/.startup ]; then
     . ~/.startup

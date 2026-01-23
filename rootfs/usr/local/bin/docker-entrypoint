@@ -5,33 +5,37 @@ set -x
 : ${NOVNC_USER:=user}
 : ${NOVNC_PASSWORD:=password}
 : ${NOVNC_AUTH:=false}
+: ${NOVNC_SUBFOLDER:=/}
 
-sudo chown $(id -u):$(id -g) $HOME
-sudo sed -i "s/^EXEUSER=.*/EXEUSER=$(id -un 2>/dev/null || echo root)/" /etc/default/webos
+sudo chown $(id -u):$(id -g) "$HOME"
+sudo sed -i "s/^EXEUSER=.*/EXEUSER=$(id -un 2>/dev/null || echo root)/g" /etc/default/webos
+sudo sed -i "s#^WEBSOCKIFY_SUBFOLDER=.*#WEBSOCKIFY_SUBFOLDER=$NOVNC_SUBFOLDER#g" /etc/default/webos
 
 if [ -d "$HOME" ] && [ -z "$(ls $HOME)" ]; then
-    cp --update=none /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout $HOME/
-    install -m 755 -d $HOME/Desktop
-    install -m 755 /usr/share/applications/code.desktop $HOME/Desktop/
-    install -m 755 /usr/share/applications/microsoft-edge.desktop $HOME/Desktop/
-    install -m 755 /usr/local/share/JetBrains/Toolbox/jetbrains-toolbox.desktop $HOME/Desktop/
+    cp --update=none /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout "$HOME/"
+    install -m 755 -d "$HOME/Desktop"
+    install -m 755 /usr/share/applications/code.desktop "$HOME/Desktop/"
+    install -m 755 /usr/share/applications/microsoft-edge.desktop "$HOME/Desktop/"
+    install -m 755 /usr/local/share/JetBrains/Toolbox/jetbrains-toolbox.desktop "$HOME/Desktop/"
 fi
 
 if [ ! -f "$HOME/.kasmpasswd" ]; then
-    echo -e "$NOVNC_PASSWORD\n$NOVNC_PASSWORD\n" | vncpasswd -u $NOVNC_USER -o -w -r
+    echo -e "$NOVNC_PASSWORD\n$NOVNC_PASSWORD\n" | vncpasswd -u "$NOVNC_USER" -o -w -r
 fi
 
 if [ ! -f "/etc/nginx/sites-enabled/webos" ]; then
-    printf "${NOVNC_USER}:$(openssl passwd -apr1 ${NOVNC_PASSWORD})\n" | sudo tee /etc/nginx/.htpasswd >>/dev/null
-    sudo sed -i "s/\$HTTP_BASIC_AUTH/$(echo -n "${NOVNC_USER}:${NOVNC_PASSWORD}" | base64)/" /etc/nginx/sites-available/webos
+    printf "$NOVNC_USER:$(openssl passwd -apr1 $NOVNC_PASSWORD)\n" | sudo tee /etc/nginx/.htpasswd >>/dev/null
+    sudo sed -i "s/\$HTTP_BASIC_AUTH/$(echo -n "$NOVNC_USER:$NOVNC_PASSWORD" | base64)/g" /etc/nginx/sites-available/webos
 
     if [ "$NOVNC_AUTH" = "false" ]; then
         sudo sed -i 's/auth_basic/#auth_basic/g' /etc/nginx/sites-available/webos
         sudo sed -i 's/auth_basic_user_file/#auth_basic_user_file/g' /etc/nginx/sites-available/webos
     fi
 
-    sudo sed -i "s/\$HTTP_PORT/$NOVNC_PORT/" /etc/nginx/sites-available/webos
-    sudo sed -i "s/\$HTTPS_PORT/$((NOVNC_PORT+1))/" /etc/nginx/sites-available/webos
+    sudo sed -i "s/\$HTTP_PORT/$NOVNC_PORT/g" /etc/nginx/sites-available/webos
+    sudo sed -i "s/\$HTTPS_PORT/$((NOVNC_PORT+1))/g" /etc/nginx/sites-available/webos
+
+    sudo sed -i "s#\$SUBFOLDER#$NOVNC_SUBFOLDER#g" /etc/nginx/sites-available/webos
 
     sudo ln -s /etc/nginx/sites-available/webos /etc/nginx/sites-enabled/webos
 fi

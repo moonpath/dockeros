@@ -1,12 +1,11 @@
-ARG BASE_IMAGE="ubuntu:24.04"
-# ARG BASE_IMAGE="nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04"
-FROM $BASE_IMAGE AS base_image
+ARG BASE_IMAGE="ubuntu:latest"
+FROM $BASE_IMAGE AS runtime
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG NAME=admin
 ARG MAIN=/home/$NAME
-ARG UID=1100
-ARG GID=1100
+ARG UID=1000
+ARG GID=1000
 ARG LC_ALL=C.UTF-8
 ARG LANG=C.UTF-8
 ARG TZ=Etc/UTC
@@ -25,10 +24,19 @@ RUN apt-get update && \
 	git
 
 # Add user
-RUN id $UID >/dev/null 2>&1 || (groupadd -fg $GID $NAME && adduser --uid $UID --gid $GID $NAME --disabled-password --gecos '')
+RUN set -e; \
+    EXISTING_USER=$(id -nu $UID 2>/dev/null || true); \
+    EXISTING_GID=$(id -g $UID 2>/dev/null || true); \
+    if [ -n "$EXISTING_USER" ] && ([ "$EXISTING_USER" != "$NAME" ] || [ "$EXISTING_GID" != "$GID" ]); then \
+        userdel -rf "$EXISTING_USER"; \
+    fi; \
+    getent group $GID >/dev/null 2>&1 || groupadd -g $GID "$NAME"; \
+    id $UID >/dev/null 2>&1 || useradd -u $UID -g $GID -m -d "$MAIN" -s /bin/bash "$NAME";
+
+# Install sudo and configure passwordless sudo for the user
 RUN apt-get install -y sudo && \
 	echo "$(id -un $UID) ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$(id -un $UID) && \
-	chmod 440 /etc/sudoers.d/$(id -un $UID)
+	chmod 440 "/etc/sudoers.d/$(id -un $UID)"
 
 # Install desktop services
 RUN apt-get install -y \
@@ -140,15 +148,15 @@ RUN apt-get -y autoclean && \
 COPY /rootfs/etc/default/webos /etc/default/webos
 
 # Add init scripts
-ADD --chmod=755 /rootfs/etc/init.d/vncserver /etc/init.d/vncserver
-ADD --chmod=755 /rootfs/etc/init.d/pulseaudio /etc/init.d/pulseaudio
-ADD --chmod=755 /rootfs/etc/init.d/kclient /etc/init.d/kclient
+COPY --chmod=755 /rootfs/etc/init.d/vncserver /etc/init.d/vncserver
+COPY --chmod=755 /rootfs/etc/init.d/pulseaudio /etc/init.d/pulseaudio
+COPY --chmod=755 /rootfs/etc/init.d/kclient /etc/init.d/kclient
 
 # Add Docker entrypoint script
-ADD --chmod=755 /rootfs/usr/local/bin/docker-entrypoint /usr/local/bin/docker-entrypoint
+COPY --chmod=755 /rootfs/usr/local/bin/docker-entrypoint /usr/local/bin/docker-entrypoint
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-	CMD bash -c 'echo >/dev/tcp/127.0.0.1/6900 >/dev/null 2>&1'
+	CMD bash -c 'echo >/dev/tcp/localhost/6900 >/dev/null 2>&1'
 
 EXPOSE 22
 VOLUME "$MAIN"
