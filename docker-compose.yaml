@@ -16,8 +16,8 @@ services:
     shm_size: 2g
     privileged: true
     restart: unless-stopped
+    init: true
     stdin_open: true
-    tty: true
     build:
       context: .
       dockerfile: Dockerfile.webos

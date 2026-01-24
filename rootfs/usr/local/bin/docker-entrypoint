@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x
+set -euo pipefail
 
 : ${NOVNC_PORT:=7900}
 : ${NOVNC_DOMAIN:=_}
@@ -43,15 +43,16 @@ if [ ! -f "/etc/nginx/sites-enabled/webos" ]; then
     sudo ln -s /etc/nginx/sites-available/webos /etc/nginx/sites-enabled/webos
 fi
 
-sudo service dbus start
-sudo service vncserver start
-sudo service pulseaudio start
-sudo service kclient start
-sudo service nginx start
+sudo service dbus start >/dev/null
+rm -rf /tmp/.X*-lock /tmp/.X11-unix && \
+    vncserver -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 :1 2>&1 | \
+    sed -u "s|https://\([^:]*\):6901|http://\1:$NOVNC_PORT or https://\1:$(($NOVNC_PORT+1))|g"
+pulseaudio --start --disallow-exit --exit-idle-time=-1
+node /usr/local/lib/kclient/index.js &
+sudo service nginx start >/dev/null
 
 if [ -f ~/.startup ]; then
-    . ~/.startup
+    . ~/.startup || true
 fi
 
-set -ex
 exec "$@"
