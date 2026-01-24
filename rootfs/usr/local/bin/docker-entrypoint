@@ -49,7 +49,7 @@ rm -rf /tmp/.X*-lock /tmp/.X11-unix && \
     vncserver -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 ${NOVNC_IP:+-publicIP "$NOVNC_IP"} :1 2>&1 | \
     sed -u "s|https://\([^:]*\):6901|http://\1:$NOVNC_PORT or https://\1:$(($NOVNC_PORT+1))|g"
 pulseaudio --start --disallow-exit --exit-idle-time=-1
-node /usr/local/lib/kclient/index.js &
+WEBSOCKIFY_SUBFOLDER="$NOVNC_SUBFOLDER" node /usr/local/lib/kclient/index.js &
 sudo service nginx start >/dev/null
 
 if [ -f ~/.startup ]; then
