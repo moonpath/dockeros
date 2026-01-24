@@ -164,5 +164,5 @@ VOLUME "$MAIN"
 USER $UID
 WORKDIR "$MAIN"
 
-CMD ["bash"]
 ENTRYPOINT ["docker-entrypoint"]
+CMD ["bash"]
