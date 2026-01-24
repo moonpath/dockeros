@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
+: ${NOVNC_IP:=""}
 : ${NOVNC_PORT:=7900}
 : ${NOVNC_DOMAIN:=_}
 : ${NOVNC_SUBFOLDER:=/}
@@ -45,7 +46,7 @@ fi
 
 sudo service dbus start >/dev/null
 rm -rf /tmp/.X*-lock /tmp/.X11-unix && \
-    vncserver -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 :1 2>&1 | \
+    vncserver -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 ${NOVNC_IP:+-publicIP "$NOVNC_IP"} :1 2>&1 | \
     sed -u "s|https://\([^:]*\):6901|http://\1:$NOVNC_PORT or https://\1:$(($NOVNC_PORT+1))|g"
 pulseaudio --start --disallow-exit --exit-idle-time=-1
 node /usr/local/lib/kclient/index.js &
