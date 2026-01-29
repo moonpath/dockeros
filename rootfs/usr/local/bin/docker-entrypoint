@@ -45,10 +45,14 @@ if [ ! -f "/etc/nginx/sites-enabled/webos" ]; then
 fi
 
 sudo service dbus start >/dev/null
-rm -rf /tmp/.X*-lock /tmp/.X11-unix && \
-    vncserver -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 ${NOVNC_IP:+-publicIP "$NOVNC_IP"} :1 2>&1 | \
+rm -rf /tmp/.X*-lock /tmp/.X11-unix
+/usr/bin/vncserver -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 ${NOVNC_IP:+-publicIP "$NOVNC_IP"} :1 2>&1 | \
     sed -u "s|https://\([^:]*\):6901|http://\1:$NOVNC_PORT or https://\1:$(($NOVNC_PORT+1))|g"
 /usr/bin/pulseaudio --start --disallow-exit --exit-idle-time=-1
+for i in {1..30}; do
+    pactl info >/dev/null 2>&1 && break
+    sleep 0.1
+done
 WEBSOCKIFY_SUBFOLDER="$NOVNC_SUBFOLDER" /usr/bin/node /usr/local/lib/kclient/index.js &
 sudo service nginx start >/dev/null
 
