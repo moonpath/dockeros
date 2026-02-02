@@ -44,7 +44,7 @@ baseRouter.get('/favicon.ico', function (req, res) {
   res.sendFile(__dirname + '/public/favicon.ico');
 });
 baseRouter.get('/manifest.json', function (req, res) {
-  res.render(__dirname + '/public/manifest.json', {title: TITLE});
+  res.render(__dirname + '/public/manifest.json', {title: TITLE, subfolder: SUBFOLDER});
 });
 
 //// Web File Browser ////
