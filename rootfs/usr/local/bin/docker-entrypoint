@@ -8,56 +8,59 @@ set -euo pipefail
 : ${NOVNC_USER:=user}
 : ${NOVNC_PASSWORD:=password}
 : ${NOVNC_AUTH:=false}
+: ${NAME:=$NOVNC_USER}
+: ${MAIN:=/home/$NAME}
 
-sudo chown $(id -u):$(id -g) "$HOME"
-sudo sed -i "s/^EXEUSER=.*/EXEUSER=$(id -un 2>/dev/null || echo root)/g" /etc/default/webos
-sudo sed -i "s#^WEBSOCKIFY_SUBFOLDER=.*#WEBSOCKIFY_SUBFOLDER=$NOVNC_SUBFOLDER#g" /etc/default/webos
+sed -i "s/^EXEUSER=.*/EXEUSER=$NAME/g" /etc/default/webos
+sed -i "s#^WEBSOCKIFY_SUBFOLDER=.*#WEBSOCKIFY_SUBFOLDER=$NOVNC_SUBFOLDER#g" /etc/default/webos
 
-if [ -d "$HOME" ] && [ -z "$(ls $HOME)" ]; then
-    cp --update=none /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout "$HOME/"
-    install -m 755 -d "$HOME/Desktop"
-    install -m 755 /usr/share/applications/code.desktop "$HOME/Desktop/"
-    install -m 755 /usr/share/applications/microsoft-edge.desktop "$HOME/Desktop/"
-    install -m 755 /usr/local/share/JetBrains/Toolbox/jetbrains-toolbox.desktop "$HOME/Desktop/"
+if [ -d "$MAIN" ] && [ -z "$(ls $MAIN)" ]; then
+    cp --update=none /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout "$MAIN/"
+    install -m 755 -d "$MAIN/Desktop"
+    install -m 755 /usr/share/applications/code.desktop "$MAIN/Desktop/"
+    install -m 755 /usr/share/applications/microsoft-edge.desktop "$MAIN/Desktop/"
+    install -m 755 /usr/local/share/JetBrains/Toolbox/jetbrains-toolbox.desktop "$MAIN/Desktop/"
 fi
 
-if [ ! -f "$HOME/.kasmpasswd" ]; then
-    echo -e "$NOVNC_PASSWORD\n$NOVNC_PASSWORD\n" | vncpasswd -u "$NOVNC_USER" -o -w -r
+chown -R "$NAME":"$NAME" "$MAIN"
+
+if [ ! -f "$MAIN/.kasmpasswd" ]; then
+    echo -e "$NOVNC_PASSWORD\n$NOVNC_PASSWORD\n" | gosu "$NAME" vncpasswd -u "$NOVNC_USER" -o -w -r
 fi
 
 if [ ! -f "/etc/nginx/sites-enabled/webos" ]; then
-    sudo sed -i "s/\$HTTP_PORT/$NOVNC_PORT/g" /etc/nginx/sites-available/webos
-    sudo sed -i "s/\$HTTPS_PORT/$((NOVNC_PORT+1))/g" /etc/nginx/sites-available/webos
+    sed -i "s/\$HTTP_PORT/$NOVNC_PORT/g" /etc/nginx/sites-available/webos
+    sed -i "s/\$HTTPS_PORT/$((NOVNC_PORT+1))/g" /etc/nginx/sites-available/webos
 
-    sudo sed -i "s/\$DOMAIN/$NOVNC_DOMAIN/g" /etc/nginx/sites-available/webos
+    sed -i "s/\$DOMAIN/$NOVNC_DOMAIN/g" /etc/nginx/sites-available/webos
 
-    sudo sed -i "s#\$SUBFOLDER#$NOVNC_SUBFOLDER#g" /etc/nginx/sites-available/webos
+    sed -i "s#\$SUBFOLDER#$NOVNC_SUBFOLDER#g" /etc/nginx/sites-available/webos
 
-    printf "$NOVNC_USER:$(openssl passwd -apr1 $NOVNC_PASSWORD)\n" | sudo tee /etc/nginx/.htpasswd >>/dev/null
-    sudo sed -i "s/\$HTTP_BASIC_AUTH/$(echo -n "$NOVNC_USER:$NOVNC_PASSWORD" | base64)/g" /etc/nginx/sites-available/webos
+    printf "$NOVNC_USER:$(openssl passwd -apr1 $NOVNC_PASSWORD)\n" | tee /etc/nginx/.htpasswd >>/dev/null
+    sed -i "s/\$HTTP_BASIC_AUTH/$(echo -n "$NOVNC_USER:$NOVNC_PASSWORD" | base64)/g" /etc/nginx/sites-available/webos
 
     if [ "$NOVNC_AUTH" = "false" ]; then
-        sudo sed -i 's/auth_basic/#auth_basic/g' /etc/nginx/sites-available/webos
-        sudo sed -i 's/auth_basic_user_file/#auth_basic_user_file/g' /etc/nginx/sites-available/webos
+        sed -i 's/auth_basic/#auth_basic/g' /etc/nginx/sites-available/webos
+        sed -i 's/auth_basic_user_file/#auth_basic_user_file/g' /etc/nginx/sites-available/webos
     fi
 
-    sudo ln -s /etc/nginx/sites-available/webos /etc/nginx/sites-enabled/webos
+    ln -s /etc/nginx/sites-available/webos /etc/nginx/sites-enabled/webos
 fi
 
-sudo service dbus start >/dev/null
+service dbus start >/dev/null
 rm -rf /tmp/.X*-lock /tmp/.X11-unix
-/usr/bin/vncserver -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 ${NOVNC_IP:+-publicIP "$NOVNC_IP"} :1 2>&1 | \
+gosu "$NAME" /usr/bin/vncserver -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 ${NOVNC_IP:+-publicIP "$NOVNC_IP"} :1 2>&1 | \
     sed -u "s|https://\([^:]*\):6901|http://\1:$NOVNC_PORT or https://\1:$(($NOVNC_PORT+1))|g"
-/usr/bin/pulseaudio --start --disallow-exit --exit-idle-time=-1
+gosu "$NAME" /usr/bin/pulseaudio --start --disallow-exit --exit-idle-time=-1
 for i in {1..30}; do
-    pactl info >/dev/null 2>&1 && break
+    gosu "$NAME" pactl info >/dev/null 2>&1 && break
     sleep 0.1
 done
-WEBSOCKIFY_SUBFOLDER="$NOVNC_SUBFOLDER" /usr/bin/node /usr/local/lib/kclient/index.js &
-sudo service nginx start >/dev/null
+WEBSOCKIFY_SUBFOLDER="$NOVNC_SUBFOLDER" gosu "$NAME" /usr/bin/node /usr/local/lib/kclient/index.js &
+service nginx start >/dev/null
 
-if [ -f ~/.startup ]; then
-    . ~/.startup || true
+if [ -f "$MAIN/.startup" ]; then
+    gosu "$NAME" bash -c ". $MAIN/.startup || true"
 fi
 
-exec "$@"
+exec gosu "$NAME" "$@"

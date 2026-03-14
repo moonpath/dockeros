@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 ARG BASE_IMAGE="ubuntu:24.04"
 # ARG BASE_IMAGE="nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04"
 FROM $BASE_IMAGE AS base_image
@@ -5,21 +6,13 @@ FROM $BASE_IMAGE AS base_image
 ARG DEBIAN_FRONTEND=noninteractive
 ARG NAME=admin
 ARG MAIN=/home/$NAME
-ARG UID=1100
-ARG GID=1100
+ARG UID=1000
+ARG GID=1000
 
 # Set timezone
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 ENV TZ=Etc/UTC
-
-# Install build tools
-RUN apt-get update && \
-	apt-get install -y \
-	ca-certificates \
-	gnupg2 \
-	curl \
-	git
 
 # Add user
 RUN set -e; \
@@ -29,20 +22,33 @@ RUN set -e; \
         userdel -rf "$EXISTING_USER"; \
     fi; \
     getent group $GID >/dev/null 2>&1 || groupadd -g $GID "$NAME"; \
-    id $UID >/dev/null 2>&1 || useradd -u $UID -g $GID -m -d "$MAIN" -s /bin/bash "$NAME";
+    id $UID >/dev/null 2>&1 || useradd -u $UID -g $GID -m -d "$MAIN" -s /bin/bash "$NAME"; \
+	mkdir -pm 755 /etc/sudoers.d; \
+    echo "$(id -un $UID) ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$(id -un $UID); \
+    chmod 440 "/etc/sudoers.d/$(id -un $UID)";
 
-# Install sudo and configure passwordless sudo for the user
-RUN apt-get install -y sudo && \
-	echo "$(id -un $UID) ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$(id -un $UID) && \
-	chmod 440 "/etc/sudoers.d/$(id -un $UID)"
+# Install build tools
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+	apt-get update && \
+	apt-get install -y \
+	ca-certificates \
+	curl \
+	git \
+	gnupg2 \
+	sudo
 
 # Install SSH server
-RUN apt-get install -y \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+	apt-get install -y \
 	openssh-server && \
 	sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
 
 # Install Docker and NVIDIA runtime
-RUN install -m 0755 -d /etc/apt/keyrings && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+	install -m 0755 -d /etc/apt/keyrings && \
 	curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc && \
 	chmod a+r /etc/apt/keyrings/docker.asc && \
 	echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
@@ -79,24 +85,19 @@ RUN install -m 0755 -d /etc/apt/keyrings && \
 EOF
 
 # Install Visual Studio Code CLI
-RUN curl -fsSL 'https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64' --output vscode_cli.tar.gz && \
-	tar -zxvf vscode_cli.tar.gz && \
-	mv code /usr/local/bin/ && \
-	rm vscode_cli.tar.gz
+RUN -mount=type=tmpfs,target=/tmp \
+	curl -fsSLo /tmp/vscode_cli.tar.gz 'https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64' && \
+	tar -zxvf /tmp/vscode_cli.tar.gz && \
+	mv code /usr/local/bin/
 
 # Install dependency components.
-RUN apt-get install -y \
-	vim \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+	apt-get install -y \
 	iproute2 \
 	iputils-ping \
-	netcat-openbsd
-
-# Clean up
-RUN apt-get -y autoclean && \
-	apt-get -y autoremove && \
-	rm -rf /var/lib/apt/lists/* \
-	/var/tmp/* \
-	/tmp/*
+	netcat-openbsd \
+	vim
 
 # Create docker init script
 RUN cat <<'EOF' > /usr/local/bin/docker-entrypoint && chmod 755 /usr/local/bin/docker-entrypoint
@@ -126,5 +127,5 @@ VOLUME "$MAIN"
 USER $UID
 WORKDIR "$MAIN"
 
-CMD ["bash"]
-ENTRYPOINT ["docker-entrypoint"]
+ENTRYPOINT [ "docker-entrypoint" ]
+CMD [ "sleep", "infinity" ]

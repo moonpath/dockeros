@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 ARG BASE_IMAGE="ubuntu:latest"
 FROM $BASE_IMAGE AS runtime
 
@@ -15,14 +16,6 @@ ENV LC_ALL=$LC_ALL
 ENV LANG=$LANG
 ENV TZ=$TZ
 
-# Install build tools
-RUN apt-get update && \
-	apt-get install -y \
-	ca-certificates \
-	gnupg2 \
-	curl \
-	git
-
 # Add user
 RUN set -e; \
     EXISTING_USER=$(id -nu $UID 2>/dev/null || true); \
@@ -33,13 +26,21 @@ RUN set -e; \
     getent group $GID >/dev/null 2>&1 || groupadd -g $GID "$NAME"; \
     id $UID >/dev/null 2>&1 || useradd -u $UID -g $GID -m -d "$MAIN" -s /bin/bash "$NAME";
 
-# Install sudo and configure passwordless sudo for the user
-RUN apt-get install -y sudo && \
-	echo "$(id -un $UID) ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$(id -un $UID) && \
-	chmod 440 "/etc/sudoers.d/$(id -un $UID)"
+# Install build tools
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+	apt-get update && \
+	apt-get install -y \
+	ca-certificates \
+	curl \
+	git \
+	gnupg2 \
+	gosu
 
 # Install desktop services
-RUN apt-get install -y \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+	apt-get install -y \
 	dbus-x11 \
 	xfce4 \
 	xfce4-terminal && \
@@ -51,18 +52,23 @@ RUN apt-get install -y \
 COPY /rootfs/etc/xdg /etc/xdg
 
 # Install KASM vnc server
-RUN KASMVNC_RELEASE=$(curl -fsSLX GET "https://api.github.com/repos/kasmtech/KasmVNC/releases/latest" | \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+	--mount=type=tmpfs,target=/tmp \
+	KASMVNC_RELEASE=$(curl -fsSLX GET "https://api.github.com/repos/kasmtech/KasmVNC/releases/latest" | \
 	awk '/tag_name/{print $4;exit}' FS='[""]') && \
 	SYSTEM_VERSION=$(grep VERSION_CODENAME /etc/os-release | cut -d'=' -f2) && \
-	curl -fsSLo kasmvncserver_amd64.deb https://github.com/kasmtech/KasmVNC/releases/download/${KASMVNC_RELEASE}/kasmvncserver_${SYSTEM_VERSION}_${KASMVNC_RELEASE#v}_amd64.deb && \
-	apt-get install -y ./kasmvncserver_amd64.deb && \
-	usermod -aG ssl-cert $(id -un $UID) && \
-	rm -rf kasmvncserver_amd64.deb
+	curl -fsSLo /tmp/kasmvncserver_amd64.deb https://github.com/kasmtech/KasmVNC/releases/download/${KASMVNC_RELEASE}/kasmvncserver_${SYSTEM_VERSION}_${KASMVNC_RELEASE#v}_amd64.deb && \
+	apt-get install -y /tmp/kasmvncserver_amd64.deb && \
+	usermod -aG ssl-cert $(id -un $UID)
 
 # Install KASM client
 COPY /rootfs/usr/local/lib/kclient /usr/local/lib/kclient
 COPY /rootfs/etc/nginx /etc/nginx
-RUN apt-get install -y \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+	--mount=type=cache,target=/root/.npm,sharing=locked \
+	apt-get install -y \
 	libpulse-dev \
 	nginx \
 	nodejs \
@@ -71,13 +77,10 @@ RUN apt-get install -y \
 	npm install && \
 	rm -f package-lock.json
 
-# Install SSH server
-RUN apt-get install -y \
-	openssh-server && \
-	sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
-
 # Install Docker and NVIDIA runtime
-RUN install -m 0755 -d /etc/apt/keyrings && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+	install -m 0755 -d /etc/apt/keyrings && \
 	curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc && \
 	chmod a+r /etc/apt/keyrings/docker.asc && \
 	echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
@@ -89,10 +92,10 @@ RUN install -m 0755 -d /etc/apt/keyrings && \
     tee /etc/apt/sources.list.d/nvidia-container-toolkit.list && \
 	apt-get update && \
 	apt-get install -y \
-	docker-ce \
-	docker-ce-cli \
 	containerd.io \
 	docker-buildx-plugin \
+	docker-ce \
+	docker-ce-cli \
 	docker-compose-plugin \
 	nvidia-container-runtime && \
 	usermod -aG docker $(id -un $UID)
@@ -100,25 +103,31 @@ COPY /rootfs/etc/docker/daemon.json /etc/docker/daemon.json
 RUN sed -i -E "s#([[:space:]]*\"data-root\"[[:space:]]*:)[[:space:]]*\".*\"([[:space:]]*,?)#\1 \"$MAIN/.docker_data_root\"\2#" /etc/docker/daemon.json
 
 # Install Vscode and Edge
-RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+	curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | \
 	gpg --dearmor > microsoft.gpg && \
 	install -o root -g root -m 644 microsoft.gpg /etc/apt/trusted.gpg.d/ && \
 	sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" > /etc/apt/sources.list.d/microsoft-vscode.list' && \
 	sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/edge stable main" > /etc/apt/sources.list.d/microsoft-edge.list' && \
 	rm microsoft.gpg && \
 	apt-get update && \
-	apt-get install -y code && \
-	apt-get install -y microsoft-edge-stable
+	apt-get install -y \ 
+	code \
+	microsoft-edge-stable
 
 # Install JetBrains Toolbox
-RUN apt-get install -y \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+	--mount=type=tmpfs,target=/tmp \
+	apt-get install -y \
+	libfontconfig \
 	libfuse2 \
+	libgtk-3-bin \
 	libxi6 \
 	libxrender1 \
 	libxtst6 \
-	mesa-utils \
-	libfontconfig \
-	libgtk-3-bin && \
+	mesa-utils && \
 	ARCHIVE_URL=$(curl -fsSL 'https://data.services.jetbrains.com/products/releases?code=TBA&latest=true&type=release' | grep -Po '"linux":.*?[^\\]",' | awk -F ':' '{print $3,":"$4}'| sed 's/[", ]//g') && \
 	ARCHIVE_FILENAME=$(basename "$ARCHIVE_URL") && \
 	curl -fsSLo "/tmp/$ARCHIVE_FILENAME" "$ARCHIVE_URL" && \
@@ -128,41 +137,47 @@ RUN apt-get install -y \
 	ln -s /usr/local/share/JetBrains/Toolbox/bin/jetbrains-toolbox /usr/local/bin/jetbrains-toolbox
 COPY /rootfs/usr/local/share/JetBrains /usr/local/share/JetBrains
 
+# Install sudo and configure passwordless sudo for the user
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+	apt-get install -y sudo && \
+	echo "$(id -un $UID) ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$(id -un $UID) && \
+	chmod 440 "/etc/sudoers.d/$(id -un $UID)"
+
+# Install SSH server
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+	apt-get install -y openssh-server && \
+	sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+
 # Install essential tools
-RUN apt-get install -y \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+	apt-get install -y \
 	fonts-noto \
-	vlc \
-	vim \
 	iproute2 \
 	iputils-ping \
-	netcat-openbsd
-
-# Clean up
-RUN apt-get -y autoclean && \
-	apt-get -y autoremove && \
-	rm -rf /var/lib/apt/lists/* \
-	/var/tmp/* \
-	/tmp/*
+	netcat-openbsd \
+	vim \
+	vlc
 
 # Set up Webos default config
 COPY /rootfs/etc/default/webos /etc/default/webos
 
 # Add init scripts
-COPY --chmod=755 /rootfs/etc/init.d/vncserver /etc/init.d/vncserver
-COPY --chmod=755 /rootfs/etc/init.d/pulseaudio /etc/init.d/pulseaudio
 COPY --chmod=755 /rootfs/etc/init.d/kclient /etc/init.d/kclient
+COPY --chmod=755 /rootfs/etc/init.d/pulseaudio /etc/init.d/pulseaudio
+COPY --chmod=755 /rootfs/etc/init.d/vncserver /etc/init.d/vncserver
 
 # Add Docker entrypoint script
 COPY --chmod=755 /rootfs/usr/local/bin/docker-entrypoint /usr/local/bin/docker-entrypoint
+RUN sed -i "s#^\(: \${NAME:=\).*#\1${NAME}}#g" /usr/local/bin/docker-entrypoint && \
+	sed -i "s#^\(: \${MAIN:=\).*#\1${MAIN}}#g" /usr/local/bin/docker-entrypoint
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 	CMD bash -c 'echo >/dev/tcp/localhost/6900 >/dev/null 2>&1'
 
-EXPOSE 22
 VOLUME "$MAIN"
 
-USER $UID
-WORKDIR "$MAIN"
-
-ENTRYPOINT ["docker-entrypoint"]
-CMD ["bash"]
+ENTRYPOINT [ "docker-entrypoint" ]
+CMD [ "sleep", "infinity" ]
