@@ -34,8 +34,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 	ca-certificates \
 	curl \
 	git \
-	gnupg2 \
-	gosu
+	gnupg2
 
 # Install desktop services
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -141,7 +140,7 @@ COPY /rootfs/usr/local/share/JetBrains /usr/local/share/JetBrains
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
 	apt-get install -y sudo && \
-	echo "$(id -un $UID) ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/$(id -un $UID) && \
+	printf "%s ALL=(ALL) NOPASSWD: ALL\n" "$(id -un $UID)" >> /etc/sudoers.d/$(id -un $UID) && \
 	chmod 440 "/etc/sudoers.d/$(id -un $UID)"
 
 # Install SSH server
@@ -161,23 +160,32 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 	vim \
 	vlc
 
-# Set up Webos default config
-COPY /rootfs/etc/default/webos /etc/default/webos
+RUN --mount=type=tmpfs,target=/tmp \
+    set -e; \
+    if [ -z "${S6_OVERLAY_VERSION}" ] || [ "${S6_OVERLAY_VERSION}" = "latest" ]; then \
+        S6_OVERLAY_VERSION=$(curl -s https://api.github.com/repos/just-containers/s6-overlay/releases/latest | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/'); \
+    fi; \
+    case "${TARGETARCH}" in \
+        "arm") S6_OVERLAY_ARCH="arm" ;; \
+        "arm64") S6_OVERLAY_ARCH="aarch64" ;; \
+        *) S6_OVERLAY_ARCH="x86_64" ;; \
+    esac; \
+    curl -fsSLo /tmp/s6-overlay-noarch.tar.xz "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz"; \
+    tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz; \
+    curl -fsSLo /tmp/s6-overlay-${S6_OVERLAY_ARCH}.tar.xz "https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_OVERLAY_ARCH}.tar.xz"; \
+    tar -C / -Jxpf /tmp/s6-overlay-${S6_OVERLAY_ARCH}.tar.xz;
 
-# Add init scripts
-COPY --chmod=755 /rootfs/etc/init.d/kclient /etc/init.d/kclient
-COPY --chmod=755 /rootfs/etc/init.d/pulseaudio /etc/init.d/pulseaudio
-COPY --chmod=755 /rootfs/etc/init.d/vncserver /etc/init.d/vncserver
-
-# Add Docker entrypoint script
-COPY --chmod=755 /rootfs/usr/local/bin/docker-entrypoint /usr/local/bin/docker-entrypoint
-RUN sed -i "s#^\(: \${NAME:=\).*#\1${NAME}}#g" /usr/local/bin/docker-entrypoint && \
-	sed -i "s#^\(: \${MAIN:=\).*#\1${MAIN}}#g" /usr/local/bin/docker-entrypoint
+COPY /rootfs/etc/s6-overlay/ /etc/s6-overlay/
+COPY --chmod=755 /rootfs/usr/local/bin/startup /usr/local/bin/startup
+RUN mkdir -p /etc/s6-overlay/s6-rc.d/startup/env && \
+	printf "%s" "$NAME" > /etc/s6-overlay/s6-rc.d/startup/env/NAME && \
+	printf "%s" "$MAIN" > /etc/s6-overlay/s6-rc.d/startup/env/MAIN
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-	CMD bash -c 'echo >/dev/tcp/localhost/6900 >/dev/null 2>&1'
+	CMD bash -c '/command/s6-svstat -o up /run/service/* | grep -q "false" && exit 1 || exit 0'
 
+EXPOSE 7900
 VOLUME "$MAIN"
 
-ENTRYPOINT [ "docker-entrypoint" ]
+ENTRYPOINT [ "/init" ]
 CMD [ "sleep", "infinity" ]

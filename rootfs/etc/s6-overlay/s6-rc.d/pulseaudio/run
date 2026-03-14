@@ -1,0 +1,8 @@
+#!/command/execlineb -P
+s6-envdir /run/s6/container_environment
+s6-envdir /etc/s6-overlay/s6-rc.d/pulseaudio/env
+redirfd -w 1 /dev/null
+redirfd -w 2 /dev/null
+importas -SD "root" USER
+s6-setuidgid ${USER}
+/usr/bin/pulseaudio --disallow-exit --exit-idle-time=-1

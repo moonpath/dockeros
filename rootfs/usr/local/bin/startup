@@ -11,8 +11,23 @@ set -euo pipefail
 : ${NAME:=$NOVNC_USER}
 : ${MAIN:=/home/$NAME}
 
-sed -i "s/^EXEUSER=.*/EXEUSER=$NAME/g" /etc/default/webos
-sed -i "s#^WEBSOCKIFY_SUBFOLDER=.*#WEBSOCKIFY_SUBFOLDER=$NOVNC_SUBFOLDER#g" /etc/default/webos
+mkdir -p /etc/s6-overlay/s6-rc.d/vncserver/env
+printf "%s" "$NAME" > /etc/s6-overlay/s6-rc.d/vncserver/env/USER
+printf "%s" "$MAIN" > /etc/s6-overlay/s6-rc.d/vncserver/env/HOME
+printf "%s" "$NOVNC_IP" > /etc/s6-overlay/s6-rc.d/vncserver/env/NOVNC_IP
+printf "%s" "$NOVNC_PORT" > /etc/s6-overlay/s6-rc.d/vncserver/env/NOVNC_PORT
+
+mkdir -p /etc/s6-overlay/s6-rc.d/pulseaudio/env
+printf "%s" "$NAME" > /etc/s6-overlay/s6-rc.d/pulseaudio/env/USER
+printf "%s" "$MAIN" > /etc/s6-overlay/s6-rc.d/pulseaudio/env/HOME
+printf "%s" ":1" > /etc/s6-overlay/s6-rc.d/pulseaudio/env/DISPLAY
+
+mkdir -p /etc/s6-overlay/s6-rc.d/kclient/env
+printf "%s" "$NAME" > /etc/s6-overlay/s6-rc.d/kclient/env/USER
+printf "%s" "$MAIN" > /etc/s6-overlay/s6-rc.d/kclient/env/HOME
+printf "%s" "$NOVNC_SUBFOLDER" > /etc/s6-overlay/s6-rc.d/kclient/env/WEBSOCKIFY_SUBFOLDER
+
+chown "$NAME":"$NAME" "$MAIN"
 
 if [ -d "$MAIN" ] && [ -z "$(ls $MAIN)" ]; then
     cp --update=none /etc/skel/.bashrc /etc/skel/.profile /etc/skel/.bash_logout "$MAIN/"
@@ -20,12 +35,11 @@ if [ -d "$MAIN" ] && [ -z "$(ls $MAIN)" ]; then
     install -m 755 /usr/share/applications/code.desktop "$MAIN/Desktop/"
     install -m 755 /usr/share/applications/microsoft-edge.desktop "$MAIN/Desktop/"
     install -m 755 /usr/local/share/JetBrains/Toolbox/jetbrains-toolbox.desktop "$MAIN/Desktop/"
+    chown -R "$NAME":"$NAME" "$MAIN"
 fi
 
-chown -R "$NAME":"$NAME" "$MAIN"
-
 if [ ! -f "$MAIN/.kasmpasswd" ]; then
-    echo -e "$NOVNC_PASSWORD\n$NOVNC_PASSWORD\n" | gosu "$NAME" vncpasswd -u "$NOVNC_USER" -o -w -r
+    echo -e "$NOVNC_PASSWORD\n$NOVNC_PASSWORD\n" | HOME="$MAIN" s6-setuidgid "$NAME" vncpasswd -u "$NOVNC_USER" -o -w -r
 fi
 
 if [ ! -f "/etc/nginx/sites-enabled/webos" ]; then
@@ -46,21 +60,3 @@ if [ ! -f "/etc/nginx/sites-enabled/webos" ]; then
 
     ln -s /etc/nginx/sites-available/webos /etc/nginx/sites-enabled/webos
 fi
-
-service dbus start >/dev/null
-rm -rf /tmp/.X*-lock /tmp/.X11-unix
-gosu "$NAME" /usr/bin/vncserver -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 ${NOVNC_IP:+-publicIP "$NOVNC_IP"} :1 2>&1 | \
-    sed -u "s|https://\([^:]*\):6901|http://\1:$NOVNC_PORT or https://\1:$(($NOVNC_PORT+1))|g"
-gosu "$NAME" /usr/bin/pulseaudio --start --disallow-exit --exit-idle-time=-1
-for i in {1..30}; do
-    gosu "$NAME" pactl info >/dev/null 2>&1 && break
-    sleep 0.1
-done
-WEBSOCKIFY_SUBFOLDER="$NOVNC_SUBFOLDER" gosu "$NAME" /usr/bin/node /usr/local/lib/kclient/index.js &
-service nginx start >/dev/null
-
-if [ -f "$MAIN/.startup" ]; then
-    gosu "$NAME" bash -c ". $MAIN/.startup || true"
-fi
-
-exec gosu "$NAME" "$@"

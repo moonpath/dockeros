@@ -1,0 +1,4 @@
+#!/command/execlineb -P
+s6-envdir /run/s6/container_environment
+s6-envdir /etc/s6-overlay/s6-rc.d/startup/env
+/usr/local/bin/startup

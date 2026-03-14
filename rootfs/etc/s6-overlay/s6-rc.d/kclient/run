@@ -1,0 +1,6 @@
+#!/command/execlineb -P
+s6-envdir /run/s6/container_environment
+s6-envdir /etc/s6-overlay/s6-rc.d/kclient/env
+importas -SD "root" USER
+s6-setuidgid ${USER}
+/usr/bin/node /usr/local/lib/kclient/index.js

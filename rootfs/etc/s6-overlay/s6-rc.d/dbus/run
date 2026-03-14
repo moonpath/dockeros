@@ -1,0 +1,5 @@
+#!/command/execlineb -P
+s6-envdir /run/s6/container_environment
+redirfd -w 1 /dev/null
+redirfd -w 2 /dev/null
+dbus-daemon --system --nofork --nopidfile

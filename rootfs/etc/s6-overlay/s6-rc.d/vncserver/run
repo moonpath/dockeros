@@ -1,0 +1,12 @@
+#!/command/execlineb -P
+s6-envdir /run/s6/container_environment
+s6-envdir /etc/s6-overlay/s6-rc.d/vncserver/env
+foreground { 
+    sh -c "rm -rf /tmp/.X*-lock /tmp/.X11-unix" 
+}
+importas -SD "root" USER
+s6-setuidgid ${USER}
+# /usr/bin/vncserver -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 ${NOVNC_IP:+-publicIP "$NOVNC_IP"} :1 2>&1 | \
+    # sed -u "s|https://\([^:]*\):6901|http://\1:$NOVNC_PORT or https://\1:$(($NOVNC_PORT+1))|g"
+# bash -c '/usr/bin/vncserver -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 ${NOVNC_IP:+-publicIP "$NOVNC_IP"} :1 2>&1 | sed -u "s|https://\([^:]*\):6901|http://\1:$NOVNC_PORT or https://\1:$(($NOVNC_PORT+1))|g"'
+bash -c "/usr/bin/vncserver -fg -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 \${NOVNC_IP:+-publicIP \"\$NOVNC_IP\"} :1"

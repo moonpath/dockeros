@@ -1,0 +1,26 @@
+#!/command/execlineb -P
+s6-envdir /run/s6/container_environment
+# s6-envdir /etc/s6-overlay/s6-rc.d/ready/env
+# importas -SD "root" USER
+# s6-setuidgid ${USER}
+bash -c "
+LOCAL_IP=\$(ip route get 1.1.1.1 | awk '{for(i=1;i<=NF;i++) if(\$i==\"src\") print \$(i+1)}')
+
+cat << EOF
+**********************************************************************
+*                                                                    *
+*                     WEBOS IS READY TO USE                          *
+*                                                                    *
+**********************************************************************
+
+ [ Access URL ]
+   -> http://\${LOCAL_IP}:\${NOVNC_PORT}\${NOVNC_SUBFOLDER}
+   -> https://\${LOCAL_IP}:\${NOVNC_PORT+1}\${NOVNC_SUBFOLDER}
+
+ [ Login Credentials ]
+   -> Username: \${NOVNC_USER}
+   -> Password: \${NOVNC_PASSWORD}
+
+**********************************************************************
+EOF
+"
