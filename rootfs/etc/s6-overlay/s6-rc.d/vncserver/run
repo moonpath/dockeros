@@ -6,7 +6,11 @@ foreground {
 }
 importas -SD "root" USER
 s6-setuidgid ${USER}
-# /usr/bin/vncserver -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 ${NOVNC_IP:+-publicIP "$NOVNC_IP"} :1 2>&1 | \
-    # sed -u "s|https://\([^:]*\):6901|http://\1:$NOVNC_PORT or https://\1:$(($NOVNC_PORT+1))|g"
-# bash -c '/usr/bin/vncserver -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 ${NOVNC_IP:+-publicIP "$NOVNC_IP"} :1 2>&1 | sed -u "s|https://\([^:]*\):6901|http://\1:$NOVNC_PORT or https://\1:$(($NOVNC_PORT+1))|g"'
-bash -c "/usr/bin/vncserver -fg -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 \${NOVNC_IP:+-publicIP \"\$NOVNC_IP\"} :1"
+foreground {
+    sh -c "
+        if [ ! -f \"\$HOME/.kasmpasswd\" ]; then
+            printf \"%s\\n%s\\n\" \"\$NOVNC_PASSWORD\" \"\$NOVNC_PASSWORD\" | vncpasswd -u \"\$NOVNC_USER\" -o -w -r
+        fi
+    "
+}
+sh -c "/usr/bin/vncserver -fg -select-de XFCE -SecurityTypes None -UseIPv6 0 -sslOnly 0 -localhost 0 -websocketPort 6901 \${NOVNC_IP:+-publicIP \"\$NOVNC_IP\"} :1"

@@ -8,7 +8,7 @@ set -euo pipefail
 : ${NOVNC_USER:=user}
 : ${NOVNC_PASSWORD:=password}
 : ${NOVNC_AUTH:=false}
-: ${NAME:=$NOVNC_USER}
+: ${NAME:=admin}
 : ${MAIN:=/home/$NAME}
 
 mkdir -p /etc/s6-overlay/s6-rc.d/vncserver/env
@@ -36,10 +36,6 @@ if [ -d "$MAIN" ] && [ -z "$(ls $MAIN)" ]; then
     install -m 755 /usr/share/applications/microsoft-edge.desktop "$MAIN/Desktop/"
     install -m 755 /usr/local/share/JetBrains/Toolbox/jetbrains-toolbox.desktop "$MAIN/Desktop/"
     chown -R "$NAME":"$NAME" "$MAIN"
-fi
-
-if [ ! -f "$MAIN/.kasmpasswd" ]; then
-    echo -e "$NOVNC_PASSWORD\n$NOVNC_PASSWORD\n" | HOME="$MAIN" s6-setuidgid "$NAME" vncpasswd -u "$NOVNC_USER" -o -w -r
 fi
 
 if [ ! -f "/etc/nginx/sites-enabled/webos" ]; then
