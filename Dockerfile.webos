@@ -105,11 +105,11 @@ RUN sed -i -E "s#([[:space:]]*\"data-root\"[[:space:]]*:)[[:space:]]*\".*\"([[:s
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
 	curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | \
-	gpg --dearmor > microsoft.gpg && \
-	install -o root -g root -m 644 microsoft.gpg /etc/apt/trusted.gpg.d/ && \
-	sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" > /etc/apt/sources.list.d/microsoft-vscode.list' && \
-	sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/edge stable main" > /etc/apt/sources.list.d/microsoft-edge.list' && \
-	rm microsoft.gpg && \
+	gpg --dearmor -o /usr/share/keyrings/microsoft.gpg && \
+    printf "Types: deb\nURIs: https://packages.microsoft.com/repos/code\nSuites: stable\nComponents: main\nArchitectures: amd64\nSigned-By: /usr/share/keyrings/microsoft.gpg\n" \
+	> /etc/apt/sources.list.d/vscode.sources && \
+    printf "Types: deb\nURIs: https://packages.microsoft.com/repos/edge\nSuites: stable\nComponents: main\nArchitectures: amd64\nSigned-By: /usr/share/keyrings/microsoft.gpg\n" \
+	> /etc/apt/sources.list.d/edge.sources && \
 	apt-get update && \
 	apt-get install -y \ 
 	code \
